@@ -1,0 +1,145 @@
+{
+  "AirportResource": {
+    "Airports": {
+      "Airport": {
+        "AirportCode": "FRA",
+        "Position": {
+          "Coordinate": {
+            "Latitude": 50.0331,
+            "Longitude": 8.5706
+          }
+        },
+        "CityCode": "FRA",
+        "CountryCode": "DE",
+        "LocationType": "Airport",
+        "Names": {
+          "Name": [
+            {
+              "@LanguageCode": "CS",
+              "$": "Frankfurt"
+            },
+            {
+              "@LanguageCode": "DE",
+              "$": "Frankfurt"
+            },
+            {
+              "@LanguageCode": "EN",
+              "$": "Frankfurt"
+            },
+            {
+              "@LanguageCode": "ES",
+              "$": "Frankfurt"
+            },
+            {
+              "@LanguageCode": "FR",
+              "$": "Francfort"
+            },
+            {
+              "@LanguageCode": "HU",
+              "$": "Frankfurt / Main International"
+            },
+            {
+              "@LanguageCode": "IT",
+              "$": "Francoforte"
+            },
+            {
+              "@LanguageCode": "JA",
+              "$": "???????"
+            },
+            {
+              "@LanguageCode": "KA",
+              "$": "????"
+            },
+            {
+              "@LanguageCode": "KO",
+              "$": "??????"
+            },
+            {
+              "@LanguageCode": "KR",
+              "$": "??????"
+            },
+            {
+              "@LanguageCode": "NL",
+              "$": "Frankfurt"
+            },
+            {
+              "@LanguageCode": "PL",
+              "$": "Frankfurt"
+            },
+            {
+              "@LanguageCode": "PT",
+              "$": "Frankfurt"
+            },
+            {
+              "@LanguageCode": "RO",
+              "$": "Frankfurt"
+            },
+            {
+              "@LanguageCode": "RU",
+              "$": "?????????"
+            },
+            {
+              "@LanguageCode": "SV",
+              "$": "Frankfurt"
+            },
+            {
+              "@LanguageCode": "UK",
+              "$": "?????????"
+            },
+            {
+              "@LanguageCode": "ZH",
+              "$": "????"
+            }
+          ]
+        },
+        "UtcOffset": "+01:00",
+        "TimeZoneId": "Europe/Berlin"
+      }
+    },
+    "Meta": {
+      "@Version": "1.0.0",
+      "Link": [
+        {
+          "@Href": "https://api.lufthansa.com/v1/mds-references/airports/FRA",
+          "@Rel": "self"
+        },
+        {
+          "@Href": "https://api.lufthansa.com/v1/mds-references/cities/FRA",
+          "@Rel": "related"
+        },
+        {
+          "@Href": "https://api.lufthansa.com/v1/mds-references/countries/DE",
+          "@Rel": "related"
+        },
+        {
+          "@Href": "http://travelguide.lufthansa.com/de/de/{cityCode}/FRA",
+          "@Rel": "alternate"
+        },
+        {
+          "@Href": "http://travelguide.lufthansa.com/de/en/{cityCode}/FRA",
+          "@Rel": "alternate"
+        },
+        {
+          "@Href": "http://travelguide.lufthansa.com/de/cn/{cityCode}/FRA",
+          "@Rel": "alternate"
+        },
+        {
+          "@Href": "http://travelguide.lufthansa.com/de/es/{cityCode}/FRA",
+          "@Rel": "alternate"
+        },
+        {
+          "@Href": "http://travelguide.lufthansa.com/de/fr/{cityCode}/FRA",
+          "@Rel": "alternate"
+        },
+        {
+          "@Href": "http://travelguide.lufthansa.com/de/it/{cityCode}/FRA",
+          "@Rel": "alternate"
+        },
+        {
+          "@Href": "http://travelguide.lufthansa.com/de/pt/{cityCode}/FRA",
+          "@Rel": "alternate"
+        }
+      ]
+    }
+  }
+}
