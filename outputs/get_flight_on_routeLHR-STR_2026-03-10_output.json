@@ -1,0 +1,130 @@
+{
+  "FlightStatusResource": {
+    "Flights": {
+      "Flight": [
+        {
+          "Departure": {
+            "AirportCode": "LHR",
+            "ScheduledTimeLocal": {
+              "DateTime": "2026-03-10T14:35"
+            },
+            "ScheduledTimeUTC": {
+              "DateTime": "2026-03-10T14:35Z"
+            },
+            "ActualTimeLocal": {
+              "DateTime": "2026-03-10T14:28"
+            },
+            "ActualTimeUTC": {
+              "DateTime": "2026-03-10T14:28Z"
+            },
+            "TimeStatus": {
+              "Code": "FE",
+              "Definition": "Flight Early"
+            },
+            "Terminal": {
+              "Name": "2"
+            }
+          },
+          "Arrival": {
+            "AirportCode": "STR",
+            "ScheduledTimeLocal": {
+              "DateTime": "2026-03-10T17:15"
+            },
+            "ScheduledTimeUTC": {
+              "DateTime": "2026-03-10T16:15Z"
+            },
+            "TimeStatus": {
+              "Code": "OT",
+              "Definition": "Flight On Time"
+            },
+            "Terminal": {
+              "Name": "3"
+            }
+          },
+          "MarketingCarrier": {
+            "AirlineID": "EW",
+            "FlightNumber": "2463"
+          },
+          "OperatingCarrier": {
+            "AirlineID": "EW",
+            "FlightNumber": "2463"
+          },
+          "Equipment": {
+            "AircraftCode": "31D",
+            "AircraftRegistration": "DAGWA"
+          },
+          "FlightStatus": {
+            "Code": "DP",
+            "Definition": "Flight Departed"
+          },
+          "ServiceType": "Passenger"
+        },
+        {
+          "Departure": {
+            "AirportCode": "LHR",
+            "ScheduledTimeLocal": {
+              "DateTime": "2026-03-10T18:35"
+            },
+            "ScheduledTimeUTC": {
+              "DateTime": "2026-03-10T18:35Z"
+            },
+            "TimeStatus": {
+              "Code": "OT",
+              "Definition": "Flight On Time"
+            },
+            "Terminal": {
+              "Name": "2"
+            }
+          },
+          "Arrival": {
+            "AirportCode": "STR",
+            "ScheduledTimeLocal": {
+              "DateTime": "2026-03-10T21:15"
+            },
+            "ScheduledTimeUTC": {
+              "DateTime": "2026-03-10T20:15Z"
+            },
+            "TimeStatus": {
+              "Code": "OT",
+              "Definition": "Flight On Time"
+            },
+            "Terminal": {
+              "Name": "3"
+            }
+          },
+          "MarketingCarrier": {
+            "AirlineID": "EW",
+            "FlightNumber": "2465"
+          },
+          "OperatingCarrier": {
+            "AirlineID": "EW",
+            "FlightNumber": "2465"
+          },
+          "Equipment": {
+            "AircraftCode": "31D",
+            "AircraftRegistration": "DAGWK"
+          },
+          "FlightStatus": {
+            "Code": "NA",
+            "Definition": "No status"
+          },
+          "ServiceType": "Passenger"
+        }
+      ]
+    },
+    "Meta": {
+      "@Version": "1.0.0",
+      "Link": [
+        {
+          "@Href": "https://api.lufthansa.com/v1/operations/flightstatus/route/LHR/STR/2026-03-10",
+          "@Rel": "self"
+        },
+        {
+          "@Href": "https://api.lufthansa.com/v1/mds-references/airports/{airportCode}",
+          "@Rel": "related"
+        }
+      ],
+      "TotalCount": 2
+    }
+  }
+}
