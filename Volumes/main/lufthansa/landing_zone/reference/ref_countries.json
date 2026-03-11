@@ -1,0 +1,75 @@
+{
+  "CountryResource": {
+    "Countries": {
+      "Country": [
+        {
+          "CountryCode": "AD",
+          "Names": {
+            "Name": {
+              "@LanguageCode": "EN",
+              "$": "Andorra"
+            }
+          }
+        },
+        {
+          "CountryCode": "AE",
+          "Names": {
+            "Name": {
+              "@LanguageCode": "EN",
+              "$": "United Arab Emirates"
+            }
+          }
+        },
+        {
+          "CountryCode": "AF",
+          "Names": {
+            "Name": {
+              "@LanguageCode": "EN",
+              "$": "Afghanistan"
+            }
+          }
+        },
+        {
+          "CountryCode": "AG",
+          "Names": {
+            "Name": {
+              "@LanguageCode": "EN",
+              "$": "Antigua And Barbuda, Leeward Islands"
+            }
+          }
+        },
+        {
+          "CountryCode": "AI",
+          "Names": {
+            "Name": {
+              "@LanguageCode": "EN",
+              "$": "Anguilla, Leeward Islands"
+            }
+          }
+        }
+      ]
+    },
+    "Meta": {
+      "@Version": "1.0.0",
+      "Link": [
+        {
+          "@Href": "https://api.lufthansa.com/v1/mds-references/countries?limit=5&lang=EN",
+          "@Rel": "self"
+        },
+        {
+          "@Href": "https://api.lufthansa.com/v1/mds-references/countries?limit=5&lang=EN&offset=5",
+          "@Rel": "next"
+        },
+        {
+          "@Href": "https://api.lufthansa.com/v1/mds-references/countries?limit=5&lang=EN&offset=235",
+          "@Rel": "last"
+        },
+        {
+          "@Href": "https://api.lufthansa.com/v1/mds-references/countries/{countryCode}",
+          "@Rel": "related"
+        }
+      ],
+      "TotalCount": 239
+    }
+  }
+}
