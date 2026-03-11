@@ -24,9 +24,6 @@ else:
 
 ### ACTUAL SCRIPT STARTS HERE
 
-import requests
-import json
-
 BASE_URL = "https://lh-proxy.onrender.com"
 ENDPOINT = "/v1/references/countries?limit=5&lang=EN"
 
