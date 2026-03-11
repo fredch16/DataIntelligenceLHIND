@@ -22,16 +22,27 @@ if "DATABRICKS_RUNTIME_VERSION" in os.environ:
 	os.makedirs(BASE_VOLUME, exist_ok=True)
 
 else: # Local Testing Behaviour
-
-	config_path = Path(__file__).parent / "../../config.yaml"
+	# 1. Get the directory where THIS script is saved
+	script_dir = os.path.dirname(os.path.abspath(__file__))
+	
+	# 2. Go to the root of your project (usually one or two levels up from 'scripts/references')
+	# This ensures it always stays inside 'DataIntelligenceLHIND'
+	project_root = os.path.dirname(os.path.dirname(script_dir))
+	
+	config_path = os.path.join(project_root, "config.yaml")
+	
 	with open(config_path, 'r') as f:
 		config = yaml.safe_load(f)
 	HEADERS = {"password": config["password"]}
 
-	# File Storage Local
-	ROOT_PATH = "../../outputs"
-	BASE_VOLUME = f"{ROOT_PATH}/reference"
+	# 3. Create 'outputs' inside your project folder
+	ROOT_PATH = os.path.join(project_root, "outputs")
+	BASE_VOLUME = os.path.join(ROOT_PATH, "reference")
+	
+	# This should now work without Permission Errors
 	os.makedirs(BASE_VOLUME, exist_ok=True)
+	print(f"💻 Local path set to: {BASE_VOLUME}")
+
 
 ### ACTUAL SCRIPT STARTS HERE
 
@@ -55,6 +66,7 @@ while keep_going:
 
 	while retry_count < max_retries and not success:
 		try:
+			print(f"Fetching records {offset} to {offset + limit}...")
 			response = requests.get(f"{BASE_URL}{PAGINATED_ENDPOINT}", headers=HEADERS, timeout=30)
 			
 			if response.status_code == 200:
@@ -77,30 +89,6 @@ while keep_going:
 
 	if not success:
 		raise Exception(f"🚨 Failed to fetch offset {offset} after {max_retries} attempts. Ingestion aborted to prevent partial data.")
-
-	##
-
-	# print(f"Fetching records {offset} to {offset + limit}...")
-	# response = requests.get(f"{BASE_URL}{PAGINATED_ENDPOINT}", headers=HEADERS)
-
-	# if response.status_code == 200:
-	# 	data = response.json()
-	# 	print(f"DEBUG: Keys in data: {data.keys()}")
-	# 	records = data.get('CityResource', {}).get('Cities', {}).get('City', [])
-
-	# 	if not records:
-	# 		keep_going = False
-	# 	else:
-	# 		all_cities.extend(records)
-	# 		offset += limit
-	# 		time.sleep(0.4)
-
-	# elif response.status_code == 429:
-	# 	print("⚠️ Rate limit hit (429). Sleeping for 5 seconds...")
-	# 	time.sleep(5)
-	# else:
-	# 	raise Exception (f"❌ Error during pagination at offset {offset}. API Reponse: {response.status_code}")
-
 
 final_output = {
 	"CityResource": {
