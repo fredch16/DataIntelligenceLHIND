@@ -50,13 +50,13 @@ BASE_URL = "https://lh-proxy.onrender.com"
 
 start_time = time.time()
 
-all_cities = []
+all_airports = []
 limit = 100
 offset = 0
 keep_going = True
 
 while keep_going:
-	PAGINATED_ENDPOINT = f"/v1/references/cities?limit={limit}&offset={offset}&lang=EN"
+	PAGINATED_ENDPOINT = f"/v1/references/airports?limit={limit}&offset={offset}&lang=EN&LHoperated=1"
 	max_retries = 5
 	retry_count = 0
 	success = False
@@ -96,7 +96,7 @@ while keep_going:
 		keep_going = False
 		continue
 
-	records = data.get('CityResource', {}).get('Cities', {}).get('City', [])
+	records = data.get('AirportResource', {}).get('Airports', {}).get('Airport', [])
 
 	# Wrap single dictionary in a list if necessary
 	if isinstance(records, dict):
@@ -105,27 +105,27 @@ while keep_going:
 	if not records:
 		keep_going = False
 	else:
-		all_cities.extend(records)
-		print(f"📥 Added {len(records)} cities. Total: {len(all_cities)}")
+		all_airports.extend(records)
+		print(f"📥 Added {len(records)} airports. Total: {len(all_airports)}")
 		offset += limit
 		time.sleep(0.4) # Respect the 3 req/sec limit
 
 
 final_output = {
-	"CityResource": {
-		"Cities": {
-			"City": all_cities
+	"AirportResource": {
+		"Airports": {
+			"Airport": all_airports
 		}
 	}
 }
 
-file_path = f"{BASE_VOLUME}/ref_cities.json"
+file_path = f"{BASE_VOLUME}/ref_airports.json"
 
 with open(file_path, "w") as f:
 	# Use final_output here, NOT response.json()
 	json.dump(final_output, f, indent=2)
 
-print(f"✅ Success! Saved {len(all_cities)} cities to {file_path}")
+print(f"✅ Success! Saved {len(all_airports)} airports to {file_path}")
 end_time = time.time()
 duration_mins = (end_time - start_time) / 60
 print(f"⏱️ Total Ingestion Time: {duration_mins:.2f} minutes")
