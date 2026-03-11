@@ -19,8 +19,6 @@ else:
 	with open(config_path, 'r') as f:
 		config = yaml.safe_load(f)
 	HEADERS = {"password": config["password"]}
-	print("Running locally - using local credentials")
-
 
 ### ACTUAL SCRIPT STARTS HERE
 
