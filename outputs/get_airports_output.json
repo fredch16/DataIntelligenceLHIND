@@ -2008,15 +2008,15 @@
       "@Version": "1.0.0",
       "Link": [
         {
-          "@Href": "https://api.lufthansa.com/v1/mds-references/airports?limit=100&LHoperated=1&lang=EN",
+          "@Href": "https://api.lufthansa.com/v1/mds-references/airports?LHoperated=1&limit=100&lang=EN",
           "@Rel": "self"
         },
         {
-          "@Href": "https://api.lufthansa.com/v1/mds-references/airports?limit=100&LHoperated=1&lang=EN&offset=100",
+          "@Href": "https://api.lufthansa.com/v1/mds-references/airports?LHoperated=1&limit=100&lang=EN&offset=100",
           "@Rel": "next"
         },
         {
-          "@Href": "https://api.lufthansa.com/v1/mds-references/airports?limit=100&LHoperated=1&lang=EN&offset=1400",
+          "@Href": "https://api.lufthansa.com/v1/mds-references/airports?LHoperated=1&limit=100&lang=EN&offset=1400",
           "@Rel": "last"
         },
         {

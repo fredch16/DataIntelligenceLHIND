@@ -26,7 +26,6 @@ output_file = output_dir / f"{script_name}_output.json"
 if response.status_code == 200:
 	data = response.json()
 	output_text = json.dumps(data, indent = 2)
-	print(output_text)
 
 	with open(output_file, 'w') as f:
 		f.write(output_text)

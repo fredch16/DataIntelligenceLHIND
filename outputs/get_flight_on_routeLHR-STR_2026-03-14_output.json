@@ -44,7 +44,8 @@
             "FlightNumber": "2461"
           },
           "Equipment": {
-            "AircraftCode": "31D"
+            "AircraftCode": "31D",
+            "AircraftRegistration": "DABGJ"
           },
           "FlightStatus": {
             "Code": "NA",
