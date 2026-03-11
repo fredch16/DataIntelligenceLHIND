@@ -50,13 +50,13 @@ BASE_URL = "https://lh-proxy.onrender.com"
 
 start_time = time.time()
 
-all_airlines = []
+all_aircraft = []
 limit = 100
 offset = 0
 keep_going = True
 
 while keep_going:
-	PAGINATED_ENDPOINT = f"/v1/references/airlines?limit={limit}&offset={offset}&lang=EN"
+	PAGINATED_ENDPOINT = f"/v1/references/aircraft?limit={limit}&offset={offset}&lang=EN"
 	max_retries = 5
 	retry_count = 0
 	success = False
@@ -96,7 +96,7 @@ while keep_going:
 		keep_going = False
 		continue
 
-	records = data.get('AirlineResource', {}).get('Airlines', {}).get('Airline', [])
+	records = data.get('AircraftResource', {}).get('AircraftSummaries', {}).get('AircraftSummary', [])
 
 	# Wrap single dictionary in a list if necessary
 	if isinstance(records, dict):
@@ -105,27 +105,27 @@ while keep_going:
 	if not records:
 		keep_going = False
 	else:
-		all_airlines.extend(records)
-		print(f"📥 Added {len(records)} airlines. Total: {len(all_airlines)}")
+		all_aircraft.extend(records)
+		print(f"📥 Added {len(records)} aircraft. Total: {len(all_aircraft)}")
 		offset += limit
 		time.sleep(0.4) # Respect the 3 req/sec limit
 
 
 final_output = {
-	"AirlineResource": {
-		"Airlines": {
-			"Airline": all_airlines
+	"AircraftResource": {
+		"AircraftSummaries": {
+			"AircraftSummary": all_aircraft
 		}
 	}
 }
 
-file_path = f"{BASE_VOLUME}/ref_airlines.json"
+file_path = f"{BASE_VOLUME}/ref_aircraft.json"
 
 with open(file_path, "w") as f:
 	# Use final_output here, NOT response.json()
 	json.dump(final_output, f, indent=2)
 
-print(f"✅ Success! Saved {len(all_airlines)} airlines to {file_path}")
+print(f"✅ Success! Saved {len(all_aircraft)} aircraft to {file_path}")
 end_time = time.time()
 duration_mins = (end_time - start_time) / 60
 print(f"⏱️ Total Ingestion Time: {duration_mins:.2f} minutes")
