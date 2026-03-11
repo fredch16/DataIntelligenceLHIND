@@ -40,9 +40,11 @@ ENDPOINT = "/v1/references/countries?limit=5&lang=EN"
 
 response = requests.get(f"{BASE_URL}{ENDPOINT}", headers=HEADERS)
 
-# 3. Print the result
 if response.status_code == 200:
-	print(json.dumps(response.json(), indent=2))
+	file_path = f"{BASE_VOLUME}/ref_countries.json"
+
+	with open(file_path, "w") as f:
+		json.dump(response.json(), f, indent=2)
+	print(f"✅ Success! Saved to {file_path}")
 else:
-	print(f"Failed! Status: {response.status_code}")
-	print(response.text)
+	print(f"❌ Failed! Status: {response.status_code}")
