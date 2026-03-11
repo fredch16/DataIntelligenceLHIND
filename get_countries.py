@@ -32,7 +32,6 @@ else: # Local Testing Behaviour
 	BASE_VOLUME = f"{ROOT_PATH}/reference"
 	os.makedirs(BASE_VOLUME, exist_ok=True)
 
-
 ### ACTUAL SCRIPT STARTS HERE
 
 BASE_URL = "https://lh-proxy.onrender.com"
