@@ -5,7 +5,7 @@ import yaml
 from pathlib import Path
 
 
-# Check if we are running on Databricks
+# Databricks Behaviour
 if "DATABRICKS_RUNTIME_VERSION" in os.environ:
 	from pyspark.sql import SparkSession
 	from pyspark.dbutils import DBUtils
@@ -14,11 +14,23 @@ if "DATABRICKS_RUNTIME_VERSION" in os.environ:
 	dbutils = DBUtils(spark)
 	proxy_pass = dbutils.secrets.get(scope="lufthansa_scope", key="client_secret")
 	HEADERS = {"password": proxy_pass}
-else:
+
+	# File storage
+	ROOT_PATH = "Volumes/main/lufthansa/landing_zone"
+	BASE_VOLUME = f"{ROOT_PATH}/reference"
+	os.makedirs(BASE_VOLUME, exist_ok=True)
+
+else: # Local Testing Behaviour
+
 	config_path = Path(__file__).parent / "config.yaml"
 	with open(config_path, 'r') as f:
 		config = yaml.safe_load(f)
 	HEADERS = {"password": config["password"]}
+
+	# File Storage Local
+	ROOT_PATH = "./outputs"
+	BASE_VOLUME = f"{ROOT_PATH}/reference"
+	os.makedirs(BASE_VOLUME, exist_ok=True)
 
 ### ACTUAL SCRIPT STARTS HERE
 
