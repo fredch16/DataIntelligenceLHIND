@@ -16,7 +16,7 @@ if "DATABRICKS_RUNTIME_VERSION" in os.environ:
 	HEADERS = {"password": proxy_pass}
 
 	# File storage
-	ROOT_PATH = "Volumes/main/lufthansa/landing_zone"
+	ROOT_PATH = "/Volumes/main/lufthansa/landing_zone"
 	BASE_VOLUME = f"{ROOT_PATH}/reference"
 	os.makedirs(BASE_VOLUME, exist_ok=True)
 
