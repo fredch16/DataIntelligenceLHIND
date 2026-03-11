@@ -37,13 +37,42 @@ else: # Local Testing Behaviour
 BASE_URL = "https://lh-proxy.onrender.com"
 ENDPOINT = "/v1/references/countries?limit=5&lang=EN"
 
-response = requests.get(f"{BASE_URL}{ENDPOINT}", headers=HEADERS)
+all_countries = []
+limit = 100
+offset = 0
+keep_going = True
 
-if response.status_code == 200:
-	file_path = f"{BASE_VOLUME}/ref_countries.json"
+while keep_going:
+	PAGINATED_ENDPOINT = f"/v1/references/countries?limit={limit}&offset={offset}&lang=EN"
 
-	with open(file_path, "w") as f:
-		json.dump(response.json(), f, indent=2)
-	print(f"✅ Success! Saved to {file_path}")
-else:
-	print(f"❌ Failed! Status: {response.status_code}")
+	print(f"Fetching records {offset} to {offset + limit}...")
+	response = requests.get(f"{BASE_URL}{PAGINATED_ENDPOINT}", headers=HEADERS)
+
+	if response.status_code == 200:
+		data = response.json()
+		records = data.get('CountryResource', {}).get('Countries', {}).get('Country', [])
+
+		if not records:
+			keep_going = False
+		else:
+			all_countries.extend(records)
+			offset += limit
+	else:
+		raise Exception (f"❌ Error during pagination at offset {offset}. API Reponse: {response.status_code}")
+
+
+final_output = {
+	"CountryResource": {
+		"Countries": {
+			"Country": all_countries
+		}
+	}
+}
+
+file_path = f"{BASE_VOLUME}/ref_countries.json"
+
+with open(file_path, "w") as f:
+	# Use final_output here, NOT response.json()
+	json.dump(final_output, f, indent=2)
+
+print(f"✅ Success! Saved {len(all_countries)} countries to {file_path}")
