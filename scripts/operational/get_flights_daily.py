@@ -42,7 +42,7 @@ else: # Local Testing Behaviour
 	
 	# This should now work without Permission Errors
 	os.makedirs(BASE_VOLUME, exist_ok=True)
-	print(f"💻 Local path set to: {BASE_VOLUME}")
+	print(f"\n💻 Local path set to: {BASE_VOLUME}\n")
 
 
 ### ACTUAL SCRIPT STARTS HERE
@@ -54,13 +54,12 @@ BASE_URL = "https://lh-proxy.onrender.com"
 today = datetime.now().strftime('%Y-%m-%d')
 print(f"📅 Target Date: {today}")
 routes = [
-	("LHR", "STR")
-	("STR", "LHR")
+	("LHR", "STR"),
+	("STR", "LHR"),
+	("MUC", "FRA")
 ]
 serviceType = "passenger"
 limit = 100
-
-all_flights = []
 
 for origin, destination in routes:
 	print(f"✈️ Processing Route: {origin} -> {destination}")
@@ -96,7 +95,6 @@ for origin, destination in routes:
 
 	# --- DATA PARSING ---
 	data = response.json()
-	
 	records = data.get('FlightStatusResource', {}).get('Flights', {}).get('Flight', [])
 
 	# Wrap single dictionary in a list if necessary
@@ -104,27 +102,25 @@ for origin, destination in routes:
 		records = [records]
 
 	if not records:
-		keep_going = False
-	else:
-		all_flights.extend(records)
-		print(f"📥 Added {len(records)} flights. Total: {len(all_flights)}")
-
-
-final_output = {
-	"FlightStatusResource": {
-		"Flights": {
-			"Flight": all_flights
+		print(f"⚠️ No flights found for {origin} -> {destination} on {today}.")
+	else: #if records
+		flight_count = len(records)
+		final_output = {
+			"FlightStatusResource": {
+				"Flights": {
+					"Flight": records
+				}
+			}
 		}
-	}
-}
 
-file_path = f"{BASE_VOLUME}/ops_flights.json"
+		file_name = f"ops_flights_{origin}_{destination}_{today}.json"
+		file_path = f"{BASE_VOLUME}/{file_name}"
 
-with open(file_path, "w") as f:
-	# Use final_output here, NOT response.json()
-	json.dump(final_output, f, indent=2)
+		with open(file_path, "w") as f:
+			# Use final_output here, NOT response.json()
+			json.dump(final_output, f, indent=2)
+		print(f"Saved |{flight_count}| flights for route: {origin}->{destination} to {file_name}")
 
-print(f"✅ Success! Saved {len(all_flights)} flights to {file_path}")
 end_time = time.time()
 duration_mins = (end_time - start_time) / 60
-print(f"⏱️ Total Ingestion Time: {duration_mins:.2f} minutes")
+print(f"\nINFO: Total Ingestion Time: {duration_mins:.2f} minutes\n")
