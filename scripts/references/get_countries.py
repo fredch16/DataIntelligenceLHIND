@@ -3,6 +3,8 @@ import json
 import os
 import yaml
 from pathlib import Path
+from datetime import datetime
+today = datetime.now().strftime('%Y-%m-%d')
 
 
 # Databricks Behaviour
@@ -21,16 +23,26 @@ if "DATABRICKS_RUNTIME_VERSION" in os.environ:
 	os.makedirs(BASE_VOLUME, exist_ok=True)
 
 else: # Local Testing Behaviour
-
-	config_path = Path(__file__).parent / "config.yaml"
+	# 1. Get the directory where THIS script is saved
+	script_dir = os.path.dirname(os.path.abspath(__file__))
+	
+	# 2. Go to the root of your project (usually one or two levels up from 'scripts/references')
+	# This ensures it always stays inside 'DataIntelligenceLHIND'
+	project_root = os.path.dirname(os.path.dirname(script_dir))
+	
+	config_path = os.path.join(project_root, "config.yaml")
+	
 	with open(config_path, 'r') as f:
 		config = yaml.safe_load(f)
 	HEADERS = {"password": config["password"]}
 
-	# File Storage Local
-	ROOT_PATH = "./outputs"
-	BASE_VOLUME = f"{ROOT_PATH}/reference"
+	# 3. Create 'outputs' inside your project folder
+	ROOT_PATH = os.path.join(project_root, "outputs")
+	BASE_VOLUME = os.path.join(ROOT_PATH, "reference")
+	
+	# This should now work without Permission Errors
 	os.makedirs(BASE_VOLUME, exist_ok=True)
+	print(f"💻 Local path set to: {BASE_VOLUME}")
 
 ### ACTUAL SCRIPT STARTS HERE
 
@@ -69,7 +81,7 @@ final_output = {
 	}
 }
 
-file_path = f"{BASE_VOLUME}/ref_countries.json"
+file_path = f"{BASE_VOLUME}/ref_countries_{today}.json"
 
 with open(file_path, "w") as f:
 	# Use final_output here, NOT response.json()

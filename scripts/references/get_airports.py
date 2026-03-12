@@ -4,6 +4,8 @@ import os
 import yaml
 import time
 from pathlib import Path
+from datetime import datetime
+today = datetime.now().strftime('%Y-%m-%d')
 
 
 # Databricks Behaviour
@@ -119,7 +121,7 @@ final_output = {
 	}
 }
 
-file_path = f"{BASE_VOLUME}/ref_airports.json"
+file_path = f"{BASE_VOLUME}/ref_airports_{today}.json"
 
 with open(file_path, "w") as f:
 	# Use final_output here, NOT response.json()
