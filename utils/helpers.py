@@ -110,13 +110,21 @@ class LufthansaClient:
 				if isinstance(records, dict):
 					records = [records]
 
+	# ... inside while keep_going loop ...
 				if not records:
+					keep_going = False
+				# ADD THIS CHECK: 
+				# If we requested 100 but got back something tiny (like 1 or 0), 
+				# we've reached the end of the line.
+				elif len(records) < limit:
+					all_records.extend(records)
+					print(f"📥 Added final {len(records)} records. Total: {len(all_records)}")
 					keep_going = False
 				else:
 					all_records.extend(records)
 					print(f"📥 Added {len(records)} records. Total: {len(all_records)}")
 					offset += limit
-					time.sleep(0.4) # Respect 3 req/sec rate limit
+					time.sleep(0.4)
 			except Exception as e:
 				print(f"⚠️ Parsing error: {e}")
 				keep_going = False
