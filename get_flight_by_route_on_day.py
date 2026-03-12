@@ -11,7 +11,7 @@ HEADERS = {"password": config["password"]}
 
 departure_airport = "LHR"
 arrival_airport = "STR"
-date = "2026-03-14"
+date = "2026-03-12"
 
 routeForOutput = f"{departure_airport}-{arrival_airport}"
 

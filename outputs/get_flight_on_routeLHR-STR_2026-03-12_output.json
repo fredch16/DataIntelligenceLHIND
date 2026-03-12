@@ -6,57 +6,6 @@
           "Departure": {
             "AirportCode": "LHR",
             "ScheduledTimeLocal": {
-              "DateTime": "2026-03-12T08:45"
-            },
-            "ScheduledTimeUTC": {
-              "DateTime": "2026-03-12T08:45Z"
-            },
-            "TimeStatus": {
-              "Code": "OT",
-              "Definition": "Flight On Time"
-            },
-            "Terminal": {
-              "Name": "2"
-            }
-          },
-          "Arrival": {
-            "AirportCode": "STR",
-            "ScheduledTimeLocal": {
-              "DateTime": "2026-03-12T11:25"
-            },
-            "ScheduledTimeUTC": {
-              "DateTime": "2026-03-12T10:25Z"
-            },
-            "TimeStatus": {
-              "Code": "OT",
-              "Definition": "Flight On Time"
-            },
-            "Terminal": {
-              "Name": "3"
-            }
-          },
-          "MarketingCarrier": {
-            "AirlineID": "EW",
-            "FlightNumber": "2461"
-          },
-          "OperatingCarrier": {
-            "AirlineID": "EW",
-            "FlightNumber": "2461"
-          },
-          "Equipment": {
-            "AircraftCode": "31D",
-            "AircraftRegistration": "DAGWK"
-          },
-          "FlightStatus": {
-            "Code": "NA",
-            "Definition": "No status"
-          },
-          "ServiceType": "Passenger"
-        },
-        {
-          "Departure": {
-            "AirportCode": "LHR",
-            "ScheduledTimeLocal": {
               "DateTime": "2026-03-12T14:35"
             },
             "ScheduledTimeUTC": {
@@ -95,7 +44,8 @@
             "FlightNumber": "2463"
           },
           "Equipment": {
-            "AircraftCode": "32P"
+            "AircraftCode": "31D",
+            "AircraftRegistration": "DABGJ"
           },
           "FlightStatus": {
             "Code": "NA",
@@ -146,7 +96,7 @@
           },
           "Equipment": {
             "AircraftCode": "31D",
-            "AircraftRegistration": "DAGWK"
+            "AircraftRegistration": "DAGWP"
           },
           "FlightStatus": {
             "Code": "NA",
@@ -168,7 +118,7 @@
           "@Rel": "related"
         }
       ],
-      "TotalCount": 3
+      "TotalCount": 2
     }
   }
 }
