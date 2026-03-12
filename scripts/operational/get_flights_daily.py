@@ -63,7 +63,7 @@ routes = [
 	("FRA", "MUC"),
 	("MUC", "FRA"),
 	("FRA", "SIN"),
-	("SIN", "FRA")
+	("SIN", "FRA"),
 	("FRA", "DXB"),
 	("DXB", "FRA")
 ]
