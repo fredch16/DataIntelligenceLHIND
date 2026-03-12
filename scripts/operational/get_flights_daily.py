@@ -56,7 +56,16 @@ print(f"📅 Target Date: {today}")
 routes = [
 	("LHR", "STR"),
 	("STR", "LHR"),
-	("MUC", "FRA")
+	("FRA", "JFK"),
+	("JFK", "FRA"),
+	("FRA", "LHR"),
+	("LHR", "FRA"),
+	("FRA", "MUC"),
+	("MUC", "FRA"),
+	("FRA", "SIN"),
+	("SIN", "FRA")
+	("FRA", "DXB"),
+	("DXB", "FRA")
 ]
 serviceType = "passenger"
 limit = 100
