@@ -21,12 +21,22 @@ class LufthansaClient:
 
 			spark = SparkSession.builder.getOrCreate()
 			dbutils = DBUtils(spark)
-			proxy_pass = dbutils.secrets.get(scope="lufthansa_scope", key="client_secret")
+			# Best practice: use the 'scope' argument passed to the function
+			proxy_pass = dbutils.secrets.get(scope=scope, key="client_secret")
 			return proxy_pass
 		else:
-			script_dir = os.path.dirname(os.path.abspath(__file__))
-			project_root = os.path.dirname(os.path.dirname(script_dir))
+			# 1. Get directory of helpers.py (e.g., .../DataIntelligenceLHIND/utils)
+			utils_dir = os.path.dirname(os.path.abspath(__file__))
+			
+			# 2. Get Project Root (e.g., .../DataIntelligenceLHIND)
+			project_root = os.path.dirname(utils_dir)
+			
+			# 3. Join with config.yaml
 			config_path = os.path.join(project_root, "config.yaml")
+			
+			if not os.path.exists(config_path):
+				raise FileNotFoundError(f"❌ Could not find config.yaml at: {config_path}")
+				
 			with open(config_path, 'r') as f:
 				config = yaml.safe_load(f)
 			return config["password"]
