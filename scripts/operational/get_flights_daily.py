@@ -4,20 +4,19 @@ import time
 from datetime import datetime
 
 try:
-    # Local Mode: __file__ exists
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.abspath(os.path.join(base_dir, '../..'))
-    if project_root not in sys.path:
-        sys.path.append(project_root)
+	# Local Mode: __file__ exists
+	base_dir = os.path.dirname(os.path.abspath(__file__))
+	project_root = os.path.abspath(os.path.join(base_dir, '../..'))
+	if project_root not in sys.path:
+		sys.path.append(project_root)
 except NameError:
-    # Databricks Mode: __file__ is not defined
-    # Databricks usually adds the current repo to the path automatically,
-    # but we can explicitly add the workspace root if needed:
-    project_root = os.getcwd() 
-    if project_root not in sys.path:
-        sys.path.append(project_root)
+	# Databricks Mode: __file__ is not defined
+	# Databricks usually adds the current repo to the path automatically,
+	# but we can explicitly add the workspace root if needed:
+	project_root = os.getcwd() 
+	if project_root not in sys.path:
+		sys.path.append(project_root)
 
-# 2. Now import your client
 from utils.helpers import LufthansaClient
 
 def run_flight_ingestion():

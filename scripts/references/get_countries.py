@@ -1,7 +1,22 @@
 import sys
 import os
 import time
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+from datetime import datetime
+
+try:
+	# Local Mode: __file__ exists
+	base_dir = os.path.dirname(os.path.abspath(__file__))
+	project_root = os.path.abspath(os.path.join(base_dir, '../..'))
+	if project_root not in sys.path:
+		sys.path.append(project_root)
+except NameError:
+	# Databricks Mode: __file__ is not defined
+	# Databricks usually adds the current repo to the path automatically,
+	# but we can explicitly add the workspace root if needed:
+	project_root = os.getcwd() 
+	if project_root not in sys.path:
+		sys.path.append(project_root)
+
 from utils.helpers import LufthansaClient
 
 def run_countries_ingestion():
