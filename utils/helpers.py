@@ -1,4 +1,5 @@
 import os
+import uuid
 import yaml
 import time
 import requests
@@ -54,6 +55,7 @@ class LufthansaClient:
 			print(f"⚠️ Logger: Falling back to console-only due to Volume I/O error: {e}")
 
 		root_logger.setLevel(logging.INFO)
+
 	def _get_credentials(self, scope):
 		if "DATABRICKS_RUNTIME_VERSION" in os.environ:
 			from pyspark.sql import SparkSession
@@ -85,9 +87,7 @@ class LufthansaClient:
 			try:
 				response = requests.get(f"{self.base_url}{endpoint}", headers=self.headers, timeout=30)
 				if response.status_code == 200:
-					result = response.json()
-					print(f"DEBUG: Returning {type(result)} with {len(str(result))} chars")
-					return result()
+					return response.json()
 				elif response.status_code in [429, 500, 502, 503, 504]:
 					wait = 2 ** retry_count
 					try:
@@ -115,7 +115,7 @@ class LufthansaClient:
 			print(f"Log warning failed: {log_err}")
 		return None
 
-	def save_json(self, data, category, entity_type, filename):
+	def save_json(self, data, category, entity_type, filename, metadata=None):
 		"""
 		Save JSON with hybrid partitioning.
 		category: 'ops' or 'ref'
@@ -127,10 +127,30 @@ class LufthansaClient:
 		partition = today.strftime("%Y-%m") if category == "ref" else today.strftime("%Y-%m-%d")
 		full_path = f"{self.base_volume}/{category}/{entity_type}/{partition}"
 		os.makedirs(full_path, exist_ok=True)
+
+	# Construct the Envelope
+		envelope = {
+			"ingestion_metadata": {
+				"ingested_at": today.strftime("%Y-%m-%d %H:%M:%S"),
+				"batch_id": str(uuid.uuid4()), # Unique ID for every single file save
+				"category": category,
+				"entity": entity_type,
+				"script_name": os.path.basename(__file__)
+			},
+			"payload": data # The raw Lufthansa JSON
+		}
+
+		# If the paginated method sends specific metadata (like offset), merge it in
+		if metadata:
+			envelope["ingestion_metadata"].update(metadata)
+
 		target_file = f"{full_path}/{filename}"
 		with open(target_file, "w") as f:
-			json.dump(data, f, indent=2)
-		self.logger.info(f"Saved to {target_file}")
+			json.dump(envelope, f, indent=2)
+		try:
+			self.logger.info(f"Saved to {target_file}")
+		except Exception as log_err:
+			print(f"Saved to {target_file}")
 
 	def ingest_paginated(self, endpoint, resource_key, category, entity_type):
 		"""
@@ -153,7 +173,12 @@ class LufthansaClient:
 				break
 			try:
 				filename = f"{today_str}_{entity_type}_offset{offset}.json"
-				self.save_json(data, category, entity_type, filename)
+				meta_extras = {
+					"offset": offset,
+					"limit": limit,
+					"endpoint": endpoint
+				   }
+				self.save_json(data, category, entity_type, filename, metadata=meta_extras)
 				records = self._find_records_in_response(data, resource_key)
 				if not records:
 					self.logger.info("No records found. Ingestion complete.")
