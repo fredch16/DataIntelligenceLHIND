@@ -1,6 +1,7 @@
 import sys
 import os
 import time
+import logging
 from datetime import datetime
 
 try:
@@ -18,6 +19,8 @@ except NameError:
 		sys.path.append(project_root)
 
 from utils.helpers import LufthansaClient
+
+logger = logging.getLogger("ingest_all_references")
 
 # Toggleable reference data configuration
 # Comment out any endpoint to skip it during ingestion
@@ -54,13 +57,11 @@ def ingest_all_references():
 	client = LufthansaClient(scope_name="lufthansa_scope")
 	enabled_refs = {k: v for k, v in REFERENCES_CONFIG.items() if v["enabled"]}
 	
-	print(f"Starting Reference Data Ingestion")
-	print(f"📋 Endpoints: {', '.join(enabled_refs.keys())}\n")
+	logger.info(f"Starting Reference Data Ingestion")
+	logger.info(f"Enabled Endpoints: {', '.join(enabled_refs.keys())}")
 	
 	for entity_type, config in enabled_refs.items():
-		print(f"\n{'='*50}")
-		print(f"Ingesting: {entity_type.upper()}")
-		print(f"{'='*50}")
+		logger.info(f"Processing: {entity_type.upper()}")
 		client.ingest_paginated(
 			endpoint=config["endpoint"],
 			resource_key=config["resource_key"],
@@ -69,8 +70,7 @@ def ingest_all_references():
 		)
 	
 	duration = (time.time() - start_time) / 60
-	print(f"\n{'='*50}")
-	print(f"All ingestions complete! Time: {duration:.2f} minutes\n")
+	logger.info(f"All ingestions complete! Time: {duration:.2f} minutes")
 
 if __name__ == "__main__":
 	ingest_all_references()

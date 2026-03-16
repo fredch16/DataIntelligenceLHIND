@@ -1,6 +1,7 @@
 import sys
 import os
 import time
+import logging
 from datetime import datetime
 
 try:
@@ -19,10 +20,12 @@ except NameError:
 
 from utils.helpers import LufthansaClient
 
+logger = logging.getLogger("get_cities")
+
 def run_cities_ingestion():
 	start_time = time.time()
 	client = LufthansaClient(scope_name="lufthansa_scope")
-	print(f"🚀 Starting Cities Reference Ingestion")
+	logger.info("Starting Cities Reference Ingestion")
 	client.ingest_paginated(
 		endpoint="/v1/references/cities",
 		resource_key="CityResource",
@@ -30,7 +33,7 @@ def run_cities_ingestion():
 		entity_type="cities"
 	)
 	duration = (time.time() - start_time) / 60
-	print(f"🏁 Finished! Time: {duration:.2f} minutes\n")
+	logger.info(f"Finished! Time: {duration:.2f} minutes")
 
 if __name__ == "__main__":
 	run_cities_ingestion()

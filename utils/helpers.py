@@ -3,6 +3,8 @@ import yaml
 import time
 import requests
 import json
+import logging
+import logging.handlers
 from datetime import datetime
 
 class LufthansaClient:
@@ -10,7 +12,36 @@ class LufthansaClient:
 		self.base_url = "https://lh-proxy.onrender.com"
 		self.client_secret = self._get_credentials(scope_name)
 		self.base_volume = self._get_base_volume()
+		self._setup_logger()
+		self.logger = logging.getLogger(self.__class__.__name__)
 		self.headers = {"password": self.client_secret}
+
+	def _setup_logger(self):
+		log_dir = os.path.join(self.base_volume, "logs")
+		os.makedirs(log_dir, exist_ok=True)
+		root_logger = logging.getLogger()
+		for handler in root_logger.handlers[:]:
+			root_logger.removeHandler(handler)
+		formatter = logging.Formatter(
+			"%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+			datefmt="%Y-%m-%d %H:%M:%S"
+		)
+		console_handler = logging.StreamHandler()
+		console_handler.setFormatter(formatter)
+		console_handler.setLevel(logging.INFO)
+		log_file = os.path.join(log_dir, "lufthansa_ingestion.log")
+		file_handler = logging.handlers.TimedRotatingFileHandler(
+			log_file,
+			when="midnight",
+			interval=1,
+			backupCount=30,
+			encoding="utf-8"
+		)
+		file_handler.setFormatter(formatter)
+		file_handler.setLevel(logging.INFO)
+		root_logger.setLevel(logging.INFO)
+		root_logger.addHandler(console_handler)
+		root_logger.addHandler(file_handler)
 
 	def _get_credentials(self, scope):
 		if "DATABRICKS_RUNTIME_VERSION" in os.environ:
@@ -25,7 +56,7 @@ class LufthansaClient:
 			project_root = os.path.dirname(utils_dir)
 			config_path = os.path.join(project_root, "config.yaml")
 			if not os.path.exists(config_path):
-				raise FileNotFoundError(f"❌ Could not find config.yaml at: {config_path}")
+				raise FileNotFoundError(f"Could not find config.yaml at: {config_path}")
 			with open(config_path, 'r') as f:
 				config = yaml.safe_load(f)
 			return config["password"]
@@ -46,11 +77,11 @@ class LufthansaClient:
 					return response.json()
 				elif response.status_code in [429, 500, 502, 503, 504]:
 					wait = 2 ** retry_count
-					print(f"⚠️ {response.status_code} Error. Retrying in {wait}s...")
+					self.logger.warning(f"HTTP {response.status_code} Error. Retrying in {wait}s...")
 					time.sleep(wait)
 					retry_count += 1
 				else:
-					print(f"❌ Permanent Error: {response.status_code}")
+					self.logger.error(f"Permanent Error: HTTP {response.status_code}")
 					return None
 			except Exception as e:
 				time.sleep(2)
@@ -72,7 +103,7 @@ class LufthansaClient:
 		target_file = f"{full_path}/{filename}"
 		with open(target_file, "w") as f:
 			json.dump(data, f, indent=2)
-		print(f"💾 Saved to {target_file}")
+		self.logger.info(f"Saved to {target_file}")
 
 	def ingest_paginated(self, endpoint, resource_key, category, entity_type):
 		"""
@@ -88,30 +119,30 @@ class LufthansaClient:
 		while True:
 			sep = "&" if "?" in endpoint else "?"
 			paginated_endpoint = f"{endpoint}{sep}limit={limit}&offset={offset}&lang=EN"
-			print(f"📄 Fetching offset {offset}...")
+			self.logger.info(f"Fetching offset {offset}...")
 			data = self.fetch_with_retry(paginated_endpoint)
 			if not data:
-				print(f"⚠️ Request failed at offset {offset}. Stopping.")
+				self.logger.warning(f"Request failed at offset {offset}. Stopping.")
 				break
 			try:
 				filename = f"{today_str}_{entity_type}_offset{offset}.json"
 				self.save_json(data, category, entity_type, filename)
 				records = self._find_records_in_response(data, resource_key)
 				if not records:
-					print(f"✅ No records found. Ingestion complete.")
+					self.logger.info("No records found. Ingestion complete.")
 					break
 				record_count = len(records)
 				total_records += record_count
-				print(f"📥 Saved {record_count} records (total: {total_records})")
+				self.logger.info(f"Saved {record_count} records (total: {total_records})")
 				if record_count < limit:
-					print(f"✅ Final batch has {record_count} records (< {limit}). Stopping.")
+					self.logger.info(f"Final batch has {record_count} records (< {limit}). Stopping.")
 					break
 				offset += limit
 				time.sleep(0.4)
 			except Exception as e:
-				print(f"⚠️ Error at offset {offset}: {e}")
+				self.logger.error(f"Error at offset {offset}: {e}")
 				break
-		print(f"🏁 Total records ingested: {total_records}")
+		self.logger.info(f"Total records ingested: {total_records}")
 
 	def _find_records_in_response(self, data, resource_key):
 		"""Auto-detect records in Lufthansa response structure."""
@@ -140,7 +171,7 @@ class LufthansaClient:
 		while True:
 			sep = "&" if "?" in endpoint else "?"
 			paginated_endpoint = f"{endpoint}{sep}limit={limit}&offset={offset}"
-			print(f"📄 Fetching offset {offset}...")
+			self.logger.info(f"Fetching offset {offset}...")
 			data = self.fetch_with_retry(paginated_endpoint)
 			if not data:
 				break
@@ -154,14 +185,14 @@ class LufthansaClient:
 					break
 				if len(records) < limit:
 					all_records.extend(records)
-					print(f"📥 Added final {len(records)} records. Total: {len(all_records)}")
+					self.logger.info(f"Added final {len(records)} records. Total: {len(all_records)}")
 					break
 				all_records.extend(records)
-				print(f"📥 Added {len(records)} records. Total: {len(all_records)}")
+				self.logger.info(f"Added {len(records)} records. Total: {len(all_records)}")
 				offset += limit
 				time.sleep(0.4)
 			except Exception as e:
-				print(f"⚠️ Parsing error: {e}")
+				self.logger.error(f"Parsing error: {e}")
 				break
 		structure = all_records
 		for key in reversed(nested_keys):
