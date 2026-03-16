@@ -18,7 +18,7 @@ except NameError:
 	if project_root not in sys.path:
 		sys.path.append(project_root)
 
-from utils.helpers import LufthansaClient
+from utils.helpers import MockLufthansaClient as LufthansaClient
 
 logger = logging.getLogger("get_flights_daily")
 

@@ -212,3 +212,32 @@ class LufthansaClient:
 		for key in reversed(nested_keys):
 			structure = {key: structure}
 		return {resource_key: structure}
+
+class MockLufthansaClient(LufthansaClient):
+	def fetch_with_retry(self, endpoint, max_retries=5):
+		self.logger.info("MOCK MODE: Returning hardcoded sample data")
+		
+		# Return a standard Lufthansa-structured dictionary
+		if "countries" in endpoint:
+			return {
+				"CountryResource": {
+					"Countries": {
+						"Country": [
+							{"CountryCode": "DE", "Names": {"Name": {"$": "Germany"}}},
+							{"CountryCode": "US", "Names": {"Name": {"$": "United States"}}}
+						]
+					}
+				}
+			}
+		
+		if "flightstatus" in endpoint:
+			return {
+				"FlightStatusResource": {
+					"Flights": {
+						"Flight": [
+							{"OperatingCarrier": {"AirlineID": "LH", "FlightNumber": "400"}}
+						]
+					}
+				}
+			}
+		return None
