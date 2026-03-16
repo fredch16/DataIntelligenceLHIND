@@ -38,17 +38,17 @@ REFERENCES_CONFIG = {
 	"airports": {
 		"endpoint": "/v1/references/airports",
 		"resource_key": "AirportResource",
-		"enabled": False
+		"enabled": True
 	},
 	"aircraft": {
 		"endpoint": "/v1/references/aircraft",
 		"resource_key": "AircraftResource",
-		"enabled": False
+		"enabled": True
 	},
 	"cities": {
 		"endpoint": "/v1/references/cities",
 		"resource_key": "CityResource",
-		"enabled": False
+		"enabled": True
 	}
 }
 

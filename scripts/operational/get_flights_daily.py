@@ -31,7 +31,6 @@ def run_flight_ingestion():
 		("FRA", "LHR"), ("LHR", "FRA"),
 		("FRA", "MUC"), ("MUC", "FRA"),
 		("FRA", "SIN"), ("SIN", "FRA"),
-		("FRA", "DXB"), ("DXB", "FRA")
 	]
 	logger.info(f"Starting Daily Flight Ingestion for: {today}")
 	total_ingested = 0
