@@ -4,7 +4,7 @@ import time
 import requests
 import json
 import logging
-import logging.handlers
+from logging.handlers import RotatingFileHandler
 from datetime import datetime
 
 class LufthansaClient:
@@ -17,31 +17,43 @@ class LufthansaClient:
 		self.headers = {"password": self.client_secret}
 
 	def _setup_logger(self):
-		log_dir = os.path.join(self.base_volume, "logs")
-		os.makedirs(log_dir, exist_ok=True)
 		root_logger = logging.getLogger()
-		for handler in root_logger.handlers[:]:
-			root_logger.removeHandler(handler)
+		
+		# Remove all existing handlers to prevent duplicates/conflicts
+		if root_logger.hasHandlers():
+			root_logger.handlers.clear()
+
 		formatter = logging.Formatter(
 			"%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-			datefmt="%Y-%m-%d %H:%M:%S"
+			datefmt="%H:%M:%S"
 		)
-		console_handler = logging.StreamHandler()
-		console_handler.setFormatter(formatter)
-		console_handler.setLevel(logging.INFO)
-		log_file = os.path.join(log_dir, "lufthansa_ingestion.log")
-		file_handler = logging.handlers.TimedRotatingFileHandler(
-			log_file,
-			when="midnight",
-			interval=1,
-			backupCount=30,
-			encoding="utf-8"
-		)
-		file_handler.setFormatter(formatter)
-		file_handler.setLevel(logging.INFO)
+
+		# 1. Console Handler (Primary for Databricks UI)
+		console_h = logging.StreamHandler()
+		console_h.setFormatter(formatter)
+		root_logger.addHandler(console_h)
+
+		# 2. File Handler (with I/O Safety Net)
+		try:
+			log_dir = os.path.join(self.base_volume, "logs")
+			os.makedirs(log_dir, exist_ok=True)
+			log_file = os.path.join(log_dir, "ingestion.log")
+			
+			# RotatingFileHandler is generally more stable on cloud mounts than TimedRotating.
+			# delay=True prevents the OS error if the volume isn't ready at init.
+			file_h = RotatingFileHandler(
+				log_file, 
+				maxBytes=5*1024*1024, # 5MB
+				backupCount=10, 
+				delay=True
+			)
+			file_h.setFormatter(formatter)
+			root_logger.addHandler(file_h)
+		except Exception as e:
+			# Fallback: If Volume is unreachable, we don't crash the script.
+			print(f"⚠️ Logger: Falling back to console-only due to Volume I/O error: {e}")
+
 		root_logger.setLevel(logging.INFO)
-		root_logger.addHandler(console_handler)
-		root_logger.addHandler(file_handler)
 
 	def _get_credentials(self, scope):
 		if "DATABRICKS_RUNTIME_VERSION" in os.environ:
