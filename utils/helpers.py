@@ -77,15 +77,29 @@ class LufthansaClient:
 					return response.json()
 				elif response.status_code in [429, 500, 502, 503, 504]:
 					wait = 2 ** retry_count
-					self.logger.warning(f"HTTP {response.status_code} Error. Retrying in {wait}s...")
+					try:
+						self.logger.warning(f"HTTP {response.status_code} Error. Retrying in {wait}s...")
+					except Exception as log_err:
+						print(f"Log warning failed: {log_err}")
 					time.sleep(wait)
 					retry_count += 1
 				else:
-					self.logger.error(f"Permanent Error: HTTP {response.status_code}")
+					try:
+						self.logger.error(f"Permanent Error: HTTP {response.status_code}")
+					except Exception as log_err:
+						print(f"Log error failed: {log_err}")
 					return None
 			except Exception as e:
+				try:
+					self.logger.error(f"Request exception at retry {retry_count}: {type(e).__name__}: {str(e)}")
+				except Exception as log_err:
+					print(f"Log error failed: {log_err}")
 				time.sleep(2)
 				retry_count += 1
+		try:
+			self.logger.warning(f"Max retries ({max_retries}) exceeded. Returning None.")
+		except Exception as log_err:
+			print(f"Log warning failed: {log_err}")
 		return None
 
 	def save_json(self, data, category, entity_type, filename):
