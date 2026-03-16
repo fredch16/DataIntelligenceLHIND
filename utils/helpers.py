@@ -17,32 +17,40 @@ class LufthansaClient:
 		self.headers = {"password": self.client_secret}
 
 	def _setup_logger(self):
-			"""Simplest possible logger to avoid Databricks 'Illegal Seek' errors"""
-			root_logger = logging.getLogger()
-			if root_logger.hasHandlers():
-				root_logger.handlers.clear()
+		"""
+		ULTRA-STABLE VERSION: Console Only.
+		Removes all file-based logging to eliminate 'Illegal seek' / 'I/O' errors.
+		"""
+		import logging
+		import sys
 
-			formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s", datefmt="%H:%M:%S")
-			
-			# Handler 1: Console (Safe)
-			console_h = logging.StreamHandler()
-			console_h.setFormatter(formatter)
-			root_logger.addHandler(console_h)
+		# Get the root logger
+		root_logger = logging.getLogger()
+		
+		# 1. Force remove EVERY existing handler
+		while root_logger.handlers:
+			root_logger.removeHandler(root_logger.handlers[0])
 
-			# Handler 2: Basic FileHandler (No rotation logic to avoid I/O crashes)
-			try:
-				log_dir = os.path.join(self.base_volume, "logs")
-				os.makedirs(log_dir, exist_ok=True)
-				log_path = os.path.join(log_dir, "ingestion.log")
-				
-				# 'delay=True' is critical on Databricks
-				file_h = logging.FileHandler(log_path, mode='a', delay=True)
-				file_h.setFormatter(formatter)
-				root_logger.addHandler(file_h)
-			except Exception:
-				pass # Fallback to console-only
+		# 2. Create a clean formatter
+		formatter = logging.Formatter(
+			"%(asctime)s | %(levelname)s | %(name)s | %(message)s", 
+			datefmt="%H:%M:%S"
+		)
 
-			root_logger.setLevel(logging.INFO)
+		# 3. Use ONLY StreamHandler (Standard Output)
+		# sys.stdout is much more stable in notebooks than the default stream
+		console_h = logging.StreamHandler(sys.stdout)
+		console_h.setFormatter(formatter)
+		
+		root_logger.addHandler(console_h)
+		root_logger.setLevel(logging.INFO)
+
+		# 4. Silence other noisy libraries
+		logging.getLogger("urllib3").setLevel(logging.WARNING)
+		logging.getLogger("requests").setLevel(logging.WARNING)
+		
+		self.logger = logging.getLogger(self.__class__.__name__)
+		self.logger.info("Logger initialized in Ultra-Stable mode (Console only).")
 
 
 	def _get_credentials(self, scope):
