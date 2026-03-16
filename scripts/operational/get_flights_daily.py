@@ -40,15 +40,8 @@ def run_flight_ingestion():
 		else:
 			flight_count = len(records)
 			total_ingested += flight_count
-			final_output = {
-				res_key: {
-					"Flights": {
-						"Flight": records
-					}
-				}
-			}
 			filename = f"{today_str}_flights_{origin}_{destination}.json"
-			client.save_json(final_output, category="ops", entity_type="flights", filename=filename)
+			client.save_json(data, category="ops", entity_type="flights", filename=filename)
 			print(f"✅ Saved |{flight_count}| flights to {filename}")
 			print("-" * 50)
 	end_time = time.time()

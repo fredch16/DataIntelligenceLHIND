@@ -31,12 +31,15 @@ DataIntelligenceLHIND/
 ├── scripts/
 │   ├── operations/
 │   │   └── get_flights_daily.py
-│   └── references/
-│       ├── get_aircraft.py
-│       ├── get_airlines.py
-│       ├── get_airports.py
-│       ├── get_cities.py
-│       └── get_countries.py
+│   ├── references/
+│   │   ├── ingest_all_references.py     # Consolidated reference ingestion (toggleable)
+│   │   ├── get_aircraft.py
+│   │   ├── get_airlines.py
+│   │   ├── get_airports.py
+│   │   ├── get_cities.py
+│   │   └── get_countries.py
+│   └── singular/
+│       └── get_flight_by_route_on_day.py
 └── README.md
 ```
 
@@ -56,23 +59,72 @@ password: "your_proxy_credential"
 **Databricks Environment:** Ensure a Secret Scope named `lufthansa_scope` is configured with the key `client_secret`.
 
 ### 🚀 Running the Pipeline
-To execute a specific ingestion task, run the corresponding script. The `sys.path` logic ensures all modules are resolved regardless of execution depth.
 
+To execute ingestion tasks, run the corresponding scripts:
+
+**Daily Flight Ingestion:**
 ```bash
 python scripts/operations/get_flights_daily.py
 ```
 
+**Reference Data Ingestion (Consolidated):**
+```bash
+python scripts/references/ingest_all_references.py
+```
+Toggle specific endpoints by editing `REFERENCES_CONFIG` in `ingest_all_references.py` and setting `enabled: True/False`.
+
+**Individual Reference Scripts:**
+Each reference data type can still be ingested independently:
+```bash
+python scripts/references/get_airlines.py
+python scripts/references/get_airports.py
+# ... etc
+```
+
+**Ad-hoc Flight Lookup:**
+```bash
+python scripts/singular/get_flight_by_route_on_day.py
+```
+Edit `departure_airport`, `arrival_airport`, and `date` parameters in the script as needed.
+
 ---
 
-## 📊 Data Governance
-All extracted data is persisted as raw JSON in the Bronze Layer of the Lakehouse.
+## 📊 Data Governance & Storage
 
-**Volume Path:** `/Volumes/main/lufthansa/landing_zone/`
+All extracted data is persisted as raw JSON in the Bronze Layer, preserving complete API responses with metadata and link blocks.
 
-**Subfolders:**
+**Base Volume Paths:**
+- **Databricks:** `/Volumes/main/lufthansa/landing_zone/`
+- **Local Development:** `outputs/`
 
-- `/operation/`: Daily flight status by route.
-- `/reference/`: Monthly snapshots of master data.
+### Hybrid Partitioning Strategy
+
+Data is organized by category and type with intelligent partitioning:
+
+**Reference Data** (Monthly Partitioning):
+```
+{base_volume}/ref/{entity_type}/{YYYY-MM}/
+├── airlines/2026-03/
+│   ├── 20260316_airlines_offset0.json
+│   ├── 20260316_airlines_offset100.json
+│   └── ...
+├── airports/2026-03/
+├── aircraft/2026-03/
+├── cities/2026-03/
+└── countries/2026-03/
+```
+
+**Operational Data** (Daily Partitioning):
+```
+{base_volume}/ops/flights/{YYYY-MM-DD}/
+├── 2026-03-16/
+│   ├── 20260316_flights_LHR_STR.json
+│   ├── 20260316_flights_STR_LHR.json
+│   ├── 20260316_flights_FRA_JFK.json
+│   └── ...
+```
+
+**Filename Convention:** `YYYYMMDD_{entity_type}_[offset{N}|route].json`
 
 ---
 
