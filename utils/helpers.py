@@ -5,7 +5,6 @@ import time
 import requests
 import json
 import logging
-from logging.handlers import RotatingFileHandler
 from datetime import datetime
 
 class LufthansaClient:
@@ -18,43 +17,33 @@ class LufthansaClient:
 		self.headers = {"password": self.client_secret}
 
 	def _setup_logger(self):
-		root_logger = logging.getLogger()
-		
-		# Remove all existing handlers to prevent duplicates/conflicts
-		if root_logger.hasHandlers():
-			root_logger.handlers.clear()
+			"""Simplest possible logger to avoid Databricks 'Illegal Seek' errors"""
+			root_logger = logging.getLogger()
+			if root_logger.hasHandlers():
+				root_logger.handlers.clear()
 
-		formatter = logging.Formatter(
-			"%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-			datefmt="%H:%M:%S"
-		)
-
-		# 1. Console Handler (Primary for Databricks UI)
-		console_h = logging.StreamHandler()
-		console_h.setFormatter(formatter)
-		root_logger.addHandler(console_h)
-
-		# 2. File Handler (with I/O Safety Net)
-		try:
-			log_dir = os.path.join(self.base_volume, "logs")
-			os.makedirs(log_dir, exist_ok=True)
-			log_file = os.path.join(log_dir, "ingestion.log")
+			formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s", datefmt="%H:%M:%S")
 			
-			# RotatingFileHandler is generally more stable on cloud mounts than TimedRotating.
-			# delay=True prevents the OS error if the volume isn't ready at init.
-			file_h = RotatingFileHandler(
-				log_file, 
-				maxBytes=5*1024*1024, # 5MB
-				backupCount=10, 
-				delay=True
-			)
-			file_h.setFormatter(formatter)
-			root_logger.addHandler(file_h)
-		except Exception as e:
-			# Fallback: If Volume is unreachable, we don't crash the script.
-			print(f"⚠️ Logger: Falling back to console-only due to Volume I/O error: {e}")
+			# Handler 1: Console (Safe)
+			console_h = logging.StreamHandler()
+			console_h.setFormatter(formatter)
+			root_logger.addHandler(console_h)
 
-		root_logger.setLevel(logging.INFO)
+			# Handler 2: Basic FileHandler (No rotation logic to avoid I/O crashes)
+			try:
+				log_dir = os.path.join(self.base_volume, "logs")
+				os.makedirs(log_dir, exist_ok=True)
+				log_path = os.path.join(log_dir, "ingestion.log")
+				
+				# 'delay=True' is critical on Databricks
+				file_h = logging.FileHandler(log_path, mode='a', delay=True)
+				file_h.setFormatter(formatter)
+				root_logger.addHandler(file_h)
+			except Exception:
+				pass # Fallback to console-only
+
+			root_logger.setLevel(logging.INFO)
+
 
 	def _get_credentials(self, scope):
 		if "DATABRICKS_RUNTIME_VERSION" in os.environ:
