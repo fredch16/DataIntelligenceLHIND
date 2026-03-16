@@ -54,7 +54,6 @@ class LufthansaClient:
 			print(f"⚠️ Logger: Falling back to console-only due to Volume I/O error: {e}")
 
 		root_logger.setLevel(logging.INFO)
-
 	def _get_credentials(self, scope):
 		if "DATABRICKS_RUNTIME_VERSION" in os.environ:
 			from pyspark.sql import SparkSession
@@ -86,7 +85,9 @@ class LufthansaClient:
 			try:
 				response = requests.get(f"{self.base_url}{endpoint}", headers=self.headers, timeout=30)
 				if response.status_code == 200:
-					return response.json()
+					result = response.json()
+					print(f"DEBUG: Returning {type(result)} with {len(str(result))} chars")
+					return result()
 				elif response.status_code in [429, 500, 502, 503, 504]:
 					wait = 2 ** retry_count
 					try:
