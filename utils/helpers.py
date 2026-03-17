@@ -8,9 +8,10 @@ import logging
 from datetime import datetime
 
 class LufthansaClient:
-	def __init__(self, scope_name="lufthansa_api"):
+	def __init__(self, scope_name="lufthansa_app_own"):
 		self.base_url = "https://api.lufthansa.com"
 		self.client_secret = self._get_credentials(scope_name)
+		print(self.client_secret)
 		self.base_volume = self._get_base_volume()
 		self._setup_logger()
 		self.logger = logging.getLogger(self.__class__.__name__)
@@ -62,7 +63,7 @@ class LufthansaClient:
 			from pyspark.dbutils import DBUtils
 			spark = SparkSession.builder.getOrCreate()
 			dbutils = DBUtils(spark)
-			proxy_pass = dbutils.secrets.get(scope=scope, key="client_secret")
+			proxy_pass = dbutils.secrets.get(scope=scope, key="access_token")
 			return proxy_pass
 		else:
 			utils_dir = os.path.dirname(os.path.abspath(__file__))

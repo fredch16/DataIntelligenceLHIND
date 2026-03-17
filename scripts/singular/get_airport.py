@@ -1,8 +1,9 @@
 import requests
+import os
 
 # Constants
 BASE_URL = "https://api.lufthansa.com"
-ACCESS_TOKEN = "ub24pf6mru8y534f3s4uhevx"  # Replace with your actual token
+# ACCESS_TOKEN = "ub24pf6mru8y534f3s4uhevx"  # Replace with your actual token
 
 # Define the endpoint and parameters
 endpoint = "/v1/references/airports?limit=1&offset=1543&lang=EN"
@@ -16,13 +17,13 @@ url = f"{BASE_URL}{endpoint}"
 # }
 
 # Setup the headers with your token
-headers = {
-	"Authorization": f"Bearer {ACCESS_TOKEN}",
-	"Accept": "application/json"
-}
+# headers = {
+# 	"Authorization": f"Bearer {ACCESS_TOKEN}",
+# 	"Accept": "application/json"
+# }
 
 try:
-	scope = lufthansa_app_own
+	scope = "lufthansa_app_own"
 	if "DATABRICKS_RUNTIME_VERSION" in os.environ:
 		from pyspark.sql import SparkSession
 		from pyspark.dbutils import DBUtils

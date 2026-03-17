@@ -24,7 +24,7 @@ logger = logging.getLogger("get_countries")
 
 def run_countries_ingestion():
 	start_time = time.time()
-	client = LufthansaClient(scope_name="lufthansa_scope")
+	client = LufthansaClient(scope_name="lufthansa_app_own")
 	logger.info("Starting Countries Reference Ingestion")
 	client.ingest_paginated(
 		endpoint="/v1/references/countries",
