@@ -161,12 +161,72 @@ class LufthansaClient:
 		today_str = datetime.now().strftime("%Y%m%d")
 		total_records = 0
 		while True:
+			# Handle poison pill records for airports at specific indices
+			requests_to_make = []
+			if entity_type == "airports":
+				if offset == 1500:
+					requests_to_make = [(1500, 51), (1552, 48)]
+					next_offset = 1600
+				elif offset == 3500:
+					requests_to_make = [(3500, 88), (3589, 12)]
+					next_offset = 3600
+			
+			if requests_to_make:
+				for current_offset, current_limit in requests_to_make:
+					sep = "&" if "?" in endpoint else "?"
+					paginated_endpoint = f"{endpoint}{sep}limit={current_limit}&offset={current_offset}&lang=EN"
+					try:
+						self.logger.info(f"Fetching offset {current_offset} with limit {current_limit} (poison pill skip)...")
+					except Exception as log_err:
+						print(f"Fetching offset {current_offset} with limit {current_limit} (poison pill skip)...")
+					data = self.fetch_with_retry(paginated_endpoint)
+					if not data:
+						try:
+							self.logger.warning(f"Request failed at offset {current_offset}. Stopping.")
+						except Exception as log_err:
+							print(f"Request failed at offset {current_offset}. Stopping.")
+						break
+					try:
+						filename = f"{today_str}_{entity_type}_offset{current_offset}.json"
+						meta_extras = {
+							"offset": current_offset,
+							"limit": current_limit,
+							"endpoint": endpoint,
+							"poison_pill_skip": True
+						}
+						self.save_json(data, category, entity_type, filename, metadata=meta_extras)
+						records = self._find_records_in_response(data, resource_key)
+						if records:
+							record_count = len(records)
+							total_records += record_count
+							try:
+								self.logger.info(f"Saved {record_count} records (total: {total_records})")
+							except Exception as log_err:
+								print(f"Saved {record_count} records (total: {total_records})")
+						time.sleep(0.4)
+					except Exception as e:
+						try:
+							self.logger.error(f"Error at offset {current_offset}: {e}")
+						except Exception as log_err:
+							print(f"Error at offset {current_offset}: {e}")
+						break
+				offset = next_offset
+				time.sleep(0.4)
+				continue
+			
+			# Normal pagination flow
 			sep = "&" if "?" in endpoint else "?"
 			paginated_endpoint = f"{endpoint}{sep}limit={limit}&offset={offset}&lang=EN"
-			self.logger.info(f"Fetching offset {offset}...")
+			try:
+				self.logger.info(f"Fetching offset {offset}...")
+			except Exception as log_err:
+				print(f"Fetching offset {offset}...")
 			data = self.fetch_with_retry(paginated_endpoint)
 			if not data:
-				self.logger.warning(f"Request failed at offset {offset}. Stopping.")
+				try:
+					self.logger.warning(f"Request failed at offset {offset}. Stopping.")
+				except Exception as log_err:
+					print(f"Request failed at offset {offset}. Stopping.")
 				break
 			try:
 				filename = f"{today_str}_{entity_type}_offset{offset}.json"
@@ -174,24 +234,39 @@ class LufthansaClient:
 					"offset": offset,
 					"limit": limit,
 					"endpoint": endpoint
-				   }
+				}
 				self.save_json(data, category, entity_type, filename, metadata=meta_extras)
 				records = self._find_records_in_response(data, resource_key)
 				if not records:
-					self.logger.info("No records found. Ingestion complete.")
+					try:
+						self.logger.info("No records found. Ingestion complete.")
+					except Exception as log_err:
+						print("No records found. Ingestion complete.")
 					break
 				record_count = len(records)
 				total_records += record_count
-				self.logger.info(f"Saved {record_count} records (total: {total_records})")
+				try:
+					self.logger.info(f"Saved {record_count} records (total: {total_records})")
+				except Exception as log_err:
+					print(f"Saved {record_count} records (total: {total_records})")
 				if record_count < limit:
-					self.logger.info(f"Final batch has {record_count} records (< {limit}). Stopping.")
+					try:
+						self.logger.info(f"Final batch has {record_count} records (< {limit}). Stopping.")
+					except Exception as log_err:
+						print(f"Final batch has {record_count} records (< {limit}). Stopping.")
 					break
 				offset += limit
 				time.sleep(0.4)
 			except Exception as e:
-				self.logger.error(f"Error at offset {offset}: {e}")
+				try:
+					self.logger.error(f"Error at offset {offset}: {e}")
+				except Exception as log_err:
+					print(f"Error at offset {offset}: {e}")
 				break
-		self.logger.info(f"Total records ingested: {total_records}")
+		try:
+			self.logger.info(f"Total records ingested: {total_records}")
+		except Exception as log_err:
+			print(f"Total records ingested: {total_records}")
 
 	def _find_records_in_response(self, data, resource_key):
 		"""Auto-detect records in Lufthansa response structure."""
@@ -215,7 +290,7 @@ class LufthansaClient:
 		Aggregates all records into single response structure.
 		"""
 		all_records = []
-		offset = 0
+		offset = 0 
 		limit = 100
 		while True:
 			sep = "&" if "?" in endpoint else "?"
