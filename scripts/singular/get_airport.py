@@ -1,19 +1,40 @@
 import requests
-import json
 
-# 1. Configuration
-BASE_URL = "https://lh-proxy.onrender.com"
-PASSWORD = "DataIntelligence2026"  # Replace with your actual password
-HEADERS = {"password": PASSWORD}
+# Constants
+BASE_URL = "https://api.lufthansa.com"
+ACCESS_TOKEN = ""  # Replace with your actual token
 
-# 2. Make the request (Frankfurt Airport 'FRA')
-response = requests.get(f"{BASE_URL}/v1/references/airports?limit=93&offset=543&lang=EN", headers=HEADERS)
-# response = requests.get(f"{BASE_URL}/v1/references/airports?limit=1&offset=1543&lang=EN", headers=HEADERS)
-# response = requests.get(f"{BASE_URL}/v1/references/airports?limit=42&offset=1500&lang=EN", headers=HEADERS)
+# Define the endpoint and parameters
+endpoint = "/v1/references/airports?limit=1&offset=1543&lang=EN"
+url = f"{BASE_URL}{endpoint}"
 
-# 3. Print the result
-if response.status_code == 200:
-    print(json.dumps(response.json(), indent=2))
-else:
-    print(f"Failed! Status: {response.status_code}")
-    print(response.text)
+# Setup query parameters
+# params = {
+# 	"limit": 1,
+# 	"offset": 1543,
+# 	"lang": "EN"
+# }
+
+# Setup the headers with your token
+headers = {
+	"Authorization": f"Bearer {ACCESS_TOKEN}",
+	"Accept": "application/json"
+}
+
+try:
+	print(headers)
+	response = requests.get(url, headers=headers)
+	# response = requests.get(url, headers=headers, params=params)
+	
+	# Check if the request was successful
+	response.raise_for_status()
+	
+	data = response.json()
+	print("Success! Data received:")
+	print(data)
+
+except requests.exceptions.HTTPError as err:
+	print(f"HTTP error occurred: {err}")
+	print(f"Response Body: {response.text}")
+except Exception as err:
+	print(f"An error occurred: {err}")

@@ -8,13 +8,16 @@ import logging
 from datetime import datetime
 
 class LufthansaClient:
-	def __init__(self, scope_name="lufthansa_scope"):
-		self.base_url = "https://lh-proxy.onrender.com"
+	def __init__(self, scope_name="lufthansa_api"):
+		self.base_url = "https://api.lufthansa.com"
 		self.client_secret = self._get_credentials(scope_name)
 		self.base_volume = self._get_base_volume()
 		self._setup_logger()
 		self.logger = logging.getLogger(self.__class__.__name__)
-		self.headers = {"password": self.client_secret}
+		self.headers = {
+			"Authorization": f"Bearer {self.client_secret}",
+			"Accept": "application/json"
+		}
 
 	def _setup_logger(self):
 		"""
@@ -69,7 +72,7 @@ class LufthansaClient:
 				raise FileNotFoundError(f"Could not find config.yaml at: {config_path}")
 			with open(config_path, 'r') as f:
 				config = yaml.safe_load(f)
-			return config["password"]
+			return config["access_token"]
 
 	def _get_base_volume(self):
 		if "DATABRICKS_RUNTIME_VERSION" in os.environ:
