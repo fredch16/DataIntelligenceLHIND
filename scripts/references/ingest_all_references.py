@@ -28,33 +28,33 @@ REFERENCES_CONFIG = {
 	"airlines": {
 		"endpoint": "/v1/references/airlines",
 		"resource_key": "AirlineResource",
-		"enabled": False
+		"enabled": True
 	},
 	"countries": {
 		"endpoint": "/v1/references/countries",
 		"resource_key": "CountryResource",
-		"enabled": False
+		"enabled": True
 	},
 	"airports": {
 		"endpoint": "/v1/references/airports",
 		"resource_key": "AirportResource",
-		"enabled": True
+		"enabled": False
 	},
 	"aircraft": {
 		"endpoint": "/v1/references/aircraft",
 		"resource_key": "AircraftResource",
-		"enabled": False
+		"enabled": True
 	},
 	"cities": {
 		"endpoint": "/v1/references/cities",
 		"resource_key": "CityResource",
-		"enabled": False
+		"enabled": True
 	}
 }
 
 def ingest_all_references():
 	start_time = time.time()
-	client = LufthansaClient(scope_name="lufthansa_scope")
+	client = LufthansaClient(scope_name="lufthansa_app_own")
 	enabled_refs = {k: v for k, v in REFERENCES_CONFIG.items() if v["enabled"]}
 	
 	logger.info(f"Starting Reference Data Ingestion")
