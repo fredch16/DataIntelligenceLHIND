@@ -28,22 +28,22 @@ REFERENCES_CONFIG = {
 	"airlines": {
 		"endpoint": "/v1/references/airlines",
 		"resource_key": "AirlineResource",
-		"enabled": False
+		"enabled": True
 	},
 	"countries": {
 		"endpoint": "/v1/references/countries",
 		"resource_key": "CountryResource",
-		"enabled": False
+		"enabled": True
 	},
 	"airports": {
 		"endpoint": "/v1/references/airports",
 		"resource_key": "AirportResource",
-		"enabled": False
+		"enabled": True
 	},
 	"aircraft": {
 		"endpoint": "/v1/references/aircraft",
 		"resource_key": "AircraftResource",
-		"enabled": False
+		"enabled": True
 	},
 	"cities": {
 		"endpoint": "/v1/references/cities",
