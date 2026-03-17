@@ -54,7 +54,7 @@ REFERENCES_CONFIG = {
 
 def ingest_all_references():
 	start_time = time.time()
-	client = LufthansaClient(scope_name="lufthansa_scope")
+	client = LufthansaClient(scope_name="lufthansa_app_own")
 	enabled_refs = {k: v for k, v in REFERENCES_CONFIG.items() if v["enabled"]}
 	
 	logger.info(f"Starting Reference Data Ingestion")
