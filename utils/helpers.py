@@ -83,12 +83,19 @@ class LufthansaClient:
 		return os.path.join(project_root, "outputs")
 
 	def fetch_with_retry(self, endpoint, max_retries=5):
+		"""Fetch with retry logic. Returns (data, status_code) tuple."""
 		retry_count = 0
 		while retry_count < max_retries:
 			try:
 				response = requests.get(f"{self.base_url}{endpoint}", headers=self.headers, timeout=30)
 				if response.status_code == 200:
-					return response.json()
+					return response.json(), 200
+				elif response.status_code == 404:
+					try:
+						self.logger.warning(f"HTTP 404 Not Found at {endpoint}")
+					except Exception as log_err:
+						print(f"HTTP 404 Not Found at {endpoint}")
+					return None, 404
 				elif response.status_code in [429, 500, 502, 503, 504]:
 					wait = 2 ** retry_count
 					try:
@@ -102,7 +109,7 @@ class LufthansaClient:
 						self.logger.error(f"Permanent Error: HTTP {response.status_code}")
 					except Exception as log_err:
 						print(f"Log error failed: {log_err}")
-					return None
+					return None, response.status_code
 			except Exception as e:
 				try:
 					self.logger.error(f"Request exception at retry {retry_count}: {type(e).__name__}: {str(e)}")
@@ -114,7 +121,7 @@ class LufthansaClient:
 			self.logger.warning(f"Max retries ({max_retries}) exceeded. Returning None.")
 		except Exception as log_err:
 			print(f"Log warning failed: {log_err}")
-		return None
+		return None, None
 
 	def save_json(self, data, category, entity_type, filename, metadata=None):
 		"""
@@ -157,7 +164,7 @@ class LufthansaClient:
 		"""
 		High-volume ingestion: saves each API response as separate file.
 		Preserves raw metadata and link blocks for downstream processing.
-		Dynamically detects and skips poison pill records using binary search.
+		When poison pill (404) detected, binary search finds it, skips it, resumes at full speed.
 		Stops when records < limit or no records returned.
 		Filename format: YYYYMMDD_{entity_type}_offsetN.json
 		"""
@@ -175,66 +182,72 @@ class LufthansaClient:
 			except Exception as log_err:
 				print(f"Fetching offset {offset} with limit {limit}...")
 			
-			data = self.fetch_with_retry(paginated_endpoint)
+			data, status_code = self.fetch_with_retry(paginated_endpoint)
 			
-			if not data:
+			# Check for poison pill (HTTP 404) FIRST - before checking if data is None
+			if status_code == 404:
 				try:
-					self.logger.warning(f"Request failed at offset {offset}. Stopping.")
+					self.logger.warning(f"Poison pill (404) detected at offset {offset}. Starting binary search to isolate...")
 				except Exception as log_err:
-					print(f"Request failed at offset {offset}. Stopping.")
-				break
-			
-			# Check for ProcessingErrors (poison pill indicator)
-			if self._contains_processing_error(data):
-				try:
-					self.logger.warning(f"Poison pill detected at offset {offset}, limit {limit}. Starting binary search...")
-				except Exception as log_err:
-					print(f"Poison pill detected at offset {offset}, limit {limit}. Starting binary search...")
+					print(f"Poison pill (404) detected at offset {offset}. Starting binary search to isolate...")
 				
-				# Use binary search to find safe batches
-				safe_batches = self._find_poison_pills_binary_search(endpoint, offset, limit)
+				# Binary search finds the exact offset that fails AND saves all clean batches found
+				result = self._find_poison_pill_offset(endpoint, offset, limit, resource_key, category, entity_type, today_str)
+				poison_pill_offset = result["poison_offset"]
+				clean_batches = result["clean_batches"]
 				
-				try:
-					self.logger.info(f"Found {len(safe_batches)} safe batch(es) from binary search")
-				except Exception as log_err:
-					print(f"Found {len(safe_batches)} safe batch(es) from binary search")
-				
-				# Fetch and save all safe batches
-				for safe_offset, safe_limit in safe_batches:
-					safe_endpoint = f"{endpoint}{sep}limit={safe_limit}&offset={safe_offset}&lang=EN"
-					safe_data = self.fetch_with_retry(safe_endpoint)
-					
-					if safe_data and not self._contains_processing_error(safe_data):
-						try:
-							filename = f"{today_str}_{entity_type}_offset{safe_offset}.json"
-							meta_extras = {
-								"offset": safe_offset,
-								"limit": safe_limit,
-								"endpoint": endpoint,
-								"poison_pill_recovered": True
-							}
-							self.save_json(safe_data, category, entity_type, filename, metadata=meta_extras)
-							
-							records = self._find_records_in_response(safe_data, resource_key)
-							if records:
-								record_count = len(records)
-								total_records += record_count
-								try:
-									self.logger.info(f"Saved {record_count} records from safe batch (total: {total_records})")
-								except Exception as log_err:
-									print(f"Saved {record_count} records from safe batch (total: {total_records})")
-						except Exception as e:
+				# Save all clean batches found during binary search
+				for batch_offset, batch_limit, batch_data in clean_batches:
+					try:
+						filename = f"{today_str}_{entity_type}_offset{batch_offset}.json"
+						meta_extras = {
+							"offset": batch_offset,
+							"limit": batch_limit,
+							"endpoint": endpoint,
+							"poison_pill_recovered": True
+						}
+						self.save_json(batch_data, category, entity_type, filename, metadata=meta_extras)
+						
+						records = self._find_records_in_response(batch_data, resource_key)
+						if records:
+							record_count = len(records)
+							total_records += record_count
 							try:
-								self.logger.error(f"Error saving safe batch at offset {safe_offset}: {e}")
+								self.logger.info(f"Saved {record_count} records from binary search batch (total: {total_records})")
 							except Exception as log_err:
-								print(f"Error saving safe batch at offset {safe_offset}: {e}")
+								print(f"Saved {record_count} records from binary search batch (total: {total_records})")
+					except Exception as e:
+						try:
+							self.logger.error(f"Error saving binary search batch at offset {batch_offset}: {e}")
+						except Exception as log_err:
+							print(f"Error saving binary search batch at offset {batch_offset}: {e}")
 					
-					time.sleep(0.4)
+					time.sleep(0.2)
 				
-				# Move to next batch after poison pill batch
-				offset += limit
+				if poison_pill_offset is not None:
+					try:
+						self.logger.info(f"Poison pill isolated at offset {poison_pill_offset}. Skipping and resuming at {poison_pill_offset + 1}.")
+					except Exception as log_err:
+						print(f"Poison pill isolated at offset {poison_pill_offset}. Skipping and resuming at {poison_pill_offset + 1}.")
+					# Skip the bad record and resume at next offset
+					offset = poison_pill_offset + 1
+				else:
+					try:
+						self.logger.warning(f"Could not isolate poison pill. Moving past offset {offset + limit}.")
+					except Exception as log_err:
+						print(f"Could not isolate poison pill. Moving past offset {offset + limit}.")
+					offset += limit
+				
 				time.sleep(0.4)
 				continue
+			
+			# Check for other failures (data is None but not 404)
+			if not data:
+				try:
+					self.logger.warning(f"Request failed at offset {offset} (status: {status_code}). Stopping.")
+				except Exception as log_err:
+					print(f"Request failed at offset {offset} (status: {status_code}). Stopping.")
+				break
 			
 			# Normal flow - no poison detected
 			try:
@@ -283,62 +296,76 @@ class LufthansaClient:
 		except Exception as log_err:
 			print(f"Total records ingested: {total_records}")
 
-	def _contains_processing_error(self, data):
-		"""Check if response contains a ProcessingError indicating a poison pill."""
-		if isinstance(data, dict):
-			return "ProcessingErrors" in data
-		return False
-
-	def _find_poison_pills_binary_search(self, endpoint, offset, limit):
+	def _find_poison_pill_offset(self, endpoint, start_offset, limit, resource_key, category, entity_type, today_str):
 		"""
-		Binary search to find safe record batches around poison pill(s).
-		Recursively splits batch in half until all poisons are isolated.
-		Returns list of (offset, limit) tuples representing safe batches.
+		Binary search to find the single offset that causes HTTP 404.
+		Returns dict with:
+		  - poison_offset: the exact offset that fails, or None if not found
+		  - clean_batches: list of (offset, limit, data) tuples for all clean batches found
+		Saves clean batches as they are discovered.
 		"""
+		clean_batches = []
+		result = self._binary_search_recursive(endpoint, start_offset, limit, clean_batches)
+		return {
+			"poison_offset": result,
+			"clean_batches": clean_batches
+		}
+	
+	def _binary_search_recursive(self, endpoint, current_offset, current_limit, clean_batches):
+		"""Recursive helper for binary search. Accumulates clean_batches list."""
+		if current_limit <= 0:
+			return None
+		
 		sep = "&" if "?" in endpoint else "?"
-		test_endpoint = f"{endpoint}{sep}limit={limit}&offset={offset}&lang=EN"
+		test_endpoint = f"{endpoint}{sep}limit={current_limit}&offset={current_offset}&lang=EN"
 		
 		try:
-			self.logger.info(f"Binary search: testing offset {offset}, limit {limit}")
+			self.logger.info(f"Binary search: testing offset {current_offset}, limit {current_limit}")
 		except:
-			print(f"Binary search: testing offset {offset}, limit {limit}")
+			print(f"Binary search: testing offset {current_offset}, limit {current_limit}")
 		
-		test_data = self.fetch_with_retry(test_endpoint)
+		test_data, status_code = self.fetch_with_retry(test_endpoint)
 		
-		if not test_data:
+		# If this batch is clean (200), save it to accumulate list and return None
+		if status_code == 200:
 			try:
-				self.logger.warning(f"Binary search: No data at offset {offset}, limit {limit}")
+				self.logger.info(f"Binary search: Found clean batch at offset {current_offset}, limit {current_limit}")
 			except:
-				print(f"Binary search: No data at offset {offset}, limit {limit}")
-			return []
+				print(f"Binary search: Found clean batch at offset {current_offset}, limit {current_limit}")
+			# Add to accumulation list (with data)
+			clean_batches.append((current_offset, current_limit, test_data))
+			return None
 		
-		# If this batch is clean, return it
-		if not self._contains_processing_error(test_data):
+		# If we found a 404 and limit is 1, this is the poison pill
+		if status_code == 404 and current_limit == 1:
 			try:
-				self.logger.info(f"Binary search: Found clean batch at offset {offset}, limit {limit}")
+				self.logger.warning(f"Binary search: Poison pill found at offset {current_offset}")
 			except:
-				print(f"Binary search: Found clean batch at offset {offset}, limit {limit}")
-			return [(offset, limit)]
+				print(f"Binary search: Poison pill found at offset {current_offset}")
+			return current_offset
 		
-		# If batch has error and is single record, it's poisoned - skip it
-		if limit == 1:
+		# If we have a 404 and limit > 1, split in half and search both sides
+		if status_code == 404:
 			try:
-				self.logger.warning(f"Binary search: Poison pill found at offset {offset}")
+				self.logger.info(f"Binary search: 404 found, splitting batch at offset {current_offset}, limit {current_limit}")
 			except:
-				print(f"Binary search: Poison pill found at offset {offset}")
-			return []
-		
-		# Split in half and search recursively
-		try:
-			self.logger.info(f"Binary search: Poison found, splitting batch at offset {offset}, limit {limit}")
-		except:
-			print(f"Binary search: Poison found, splitting batch at offset {offset}, limit {limit}")
-		
-		half = limit // 2
-		left_half = self._find_poison_pills_binary_search(endpoint, offset, half)
-		right_half = self._find_poison_pills_binary_search(endpoint, offset + half, limit - half)
-		
-		return left_half + right_half
+				print(f"Binary search: 404 found, splitting batch at offset {current_offset}, limit {current_limit}")
+			
+			half = current_limit // 2
+			# Search left half first
+			left_result = self._binary_search_recursive(endpoint, current_offset, half, clean_batches)
+			if left_result is not None:
+				return left_result
+			# If left half is clean, search right half
+			right_result = self._binary_search_recursive(endpoint, current_offset + half, current_limit - half, clean_batches)
+			return right_result
+		else:
+			# Some other error - can't proceed
+			try:
+				self.logger.warning(f"Binary search: Unexpected status {status_code} at offset {current_offset}")
+			except:
+				print(f"Binary search: Unexpected status {status_code} at offset {current_offset}")
+			return None
 
 	def _find_records_in_response(self, data, resource_key):
 		"""Auto-detect records in Lufthansa response structure."""
@@ -368,7 +395,7 @@ class LufthansaClient:
 			sep = "&" if "?" in endpoint else "?"
 			paginated_endpoint = f"{endpoint}{sep}limit={limit}&offset={offset}"
 			self.logger.info(f"Fetching offset {offset}...")
-			data = self.fetch_with_retry(paginated_endpoint)
+			data, status_code = self.fetch_with_retry(paginated_endpoint)
 			if not data:
 				break
 			try:
@@ -399,7 +426,7 @@ class MockLufthansaClient(LufthansaClient):
 	def fetch_with_retry(self, endpoint, max_retries=5):
 		self.logger.info("MOCK MODE: Returning hardcoded sample data")
 		
-		# Return a standard Lufthansa-structured dictionary
+		# Return a standard Lufthansa-structured dictionary with (data, status_code) tuple
 		if "countries" in endpoint:
 			return {
 				"CountryResource": {
@@ -410,7 +437,7 @@ class MockLufthansaClient(LufthansaClient):
 						]
 					}
 				}
-			}
+			}, 200
 		
 		if "flightstatus" in endpoint:
 			return {
@@ -421,5 +448,5 @@ class MockLufthansaClient(LufthansaClient):
 						]
 					}
 				}
-			}
-		return None
+			}, 200
+		return None, 404
