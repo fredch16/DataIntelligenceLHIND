@@ -153,6 +153,7 @@ class LufthansaClient:
 		"""
 		High-volume ingestion: saves each API response as separate file.
 		Preserves raw metadata and link blocks for downstream processing.
+		Dynamically detects and skips poison pill records using binary search.
 		Stops when records < limit or no records returned.
 		Filename format: YYYYMMDD_{entity_type}_offsetN.json
 		"""
@@ -160,74 +161,78 @@ class LufthansaClient:
 		limit = 100
 		today_str = datetime.now().strftime("%Y%m%d")
 		total_records = 0
+		
 		while True:
-			# Handle poison pill records for airports at specific indices
-			requests_to_make = []
-			if entity_type == "airports":
-				if offset == 1500:
-					requests_to_make = [(1500, 51), (1552, 48)]
-					next_offset = 1600
-				elif offset == 3500:
-					requests_to_make = [(3500, 88), (3589, 12)]
-					next_offset = 3600
-			
-			if requests_to_make:
-				for current_offset, current_limit in requests_to_make:
-					sep = "&" if "?" in endpoint else "?"
-					paginated_endpoint = f"{endpoint}{sep}limit={current_limit}&offset={current_offset}&lang=EN"
-					try:
-						self.logger.info(f"Fetching offset {current_offset} with limit {current_limit} (poison pill skip)...")
-					except Exception as log_err:
-						print(f"Fetching offset {current_offset} with limit {current_limit} (poison pill skip)...")
-					data = self.fetch_with_retry(paginated_endpoint)
-					if not data:
-						try:
-							self.logger.warning(f"Request failed at offset {current_offset}. Stopping.")
-						except Exception as log_err:
-							print(f"Request failed at offset {current_offset}. Stopping.")
-						break
-					try:
-						filename = f"{today_str}_{entity_type}_offset{current_offset}.json"
-						meta_extras = {
-							"offset": current_offset,
-							"limit": current_limit,
-							"endpoint": endpoint,
-							"poison_pill_skip": True
-						}
-						self.save_json(data, category, entity_type, filename, metadata=meta_extras)
-						records = self._find_records_in_response(data, resource_key)
-						if records:
-							record_count = len(records)
-							total_records += record_count
-							try:
-								self.logger.info(f"Saved {record_count} records (total: {total_records})")
-							except Exception as log_err:
-								print(f"Saved {record_count} records (total: {total_records})")
-						time.sleep(0.4)
-					except Exception as e:
-						try:
-							self.logger.error(f"Error at offset {current_offset}: {e}")
-						except Exception as log_err:
-							print(f"Error at offset {current_offset}: {e}")
-						break
-				offset = next_offset
-				time.sleep(0.4)
-				continue
-			
-			# Normal pagination flow
 			sep = "&" if "?" in endpoint else "?"
 			paginated_endpoint = f"{endpoint}{sep}limit={limit}&offset={offset}&lang=EN"
+			
 			try:
-				self.logger.info(f"Fetching offset {offset}...")
+				self.logger.info(f"Fetching offset {offset} with limit {limit}...")
 			except Exception as log_err:
-				print(f"Fetching offset {offset}...")
+				print(f"Fetching offset {offset} with limit {limit}...")
+			
 			data = self.fetch_with_retry(paginated_endpoint)
+			
 			if not data:
 				try:
 					self.logger.warning(f"Request failed at offset {offset}. Stopping.")
 				except Exception as log_err:
 					print(f"Request failed at offset {offset}. Stopping.")
 				break
+			
+			# Check for ProcessingErrors (poison pill indicator)
+			if self._contains_processing_error(data):
+				try:
+					self.logger.warning(f"Poison pill detected at offset {offset}, limit {limit}. Starting binary search...")
+				except Exception as log_err:
+					print(f"Poison pill detected at offset {offset}, limit {limit}. Starting binary search...")
+				
+				# Use binary search to find safe batches
+				safe_batches = self._find_poison_pills_binary_search(endpoint, offset, limit)
+				
+				try:
+					self.logger.info(f"Found {len(safe_batches)} safe batch(es) from binary search")
+				except Exception as log_err:
+					print(f"Found {len(safe_batches)} safe batch(es) from binary search")
+				
+				# Fetch and save all safe batches
+				for safe_offset, safe_limit in safe_batches:
+					safe_endpoint = f"{endpoint}{sep}limit={safe_limit}&offset={safe_offset}&lang=EN"
+					safe_data = self.fetch_with_retry(safe_endpoint)
+					
+					if safe_data and not self._contains_processing_error(safe_data):
+						try:
+							filename = f"{today_str}_{entity_type}_offset{safe_offset}.json"
+							meta_extras = {
+								"offset": safe_offset,
+								"limit": safe_limit,
+								"endpoint": endpoint,
+								"poison_pill_recovered": True
+							}
+							self.save_json(safe_data, category, entity_type, filename, metadata=meta_extras)
+							
+							records = self._find_records_in_response(safe_data, resource_key)
+							if records:
+								record_count = len(records)
+								total_records += record_count
+								try:
+									self.logger.info(f"Saved {record_count} records from safe batch (total: {total_records})")
+								except Exception as log_err:
+									print(f"Saved {record_count} records from safe batch (total: {total_records})")
+						except Exception as e:
+							try:
+								self.logger.error(f"Error saving safe batch at offset {safe_offset}: {e}")
+							except Exception as log_err:
+								print(f"Error saving safe batch at offset {safe_offset}: {e}")
+					
+					time.sleep(0.4)
+				
+				# Move to next batch after poison pill batch
+				offset += limit
+				time.sleep(0.4)
+				continue
+			
+			# Normal flow - no poison detected
 			try:
 				filename = f"{today_str}_{entity_type}_offset{offset}.json"
 				meta_extras = {
@@ -236,6 +241,7 @@ class LufthansaClient:
 					"endpoint": endpoint
 				}
 				self.save_json(data, category, entity_type, filename, metadata=meta_extras)
+				
 				records = self._find_records_in_response(data, resource_key)
 				if not records:
 					try:
@@ -243,30 +249,92 @@ class LufthansaClient:
 					except Exception as log_err:
 						print("No records found. Ingestion complete.")
 					break
+				
 				record_count = len(records)
 				total_records += record_count
 				try:
 					self.logger.info(f"Saved {record_count} records (total: {total_records})")
 				except Exception as log_err:
 					print(f"Saved {record_count} records (total: {total_records})")
+				
 				if record_count < limit:
 					try:
 						self.logger.info(f"Final batch has {record_count} records (< {limit}). Stopping.")
 					except Exception as log_err:
 						print(f"Final batch has {record_count} records (< {limit}). Stopping.")
 					break
+				
 				offset += limit
 				time.sleep(0.4)
+			
 			except Exception as e:
 				try:
 					self.logger.error(f"Error at offset {offset}: {e}")
 				except Exception as log_err:
 					print(f"Error at offset {offset}: {e}")
 				break
+		
 		try:
 			self.logger.info(f"Total records ingested: {total_records}")
 		except Exception as log_err:
 			print(f"Total records ingested: {total_records}")
+
+	def _contains_processing_error(self, data):
+		"""Check if response contains a ProcessingError indicating a poison pill."""
+		if isinstance(data, dict):
+			return "ProcessingErrors" in data
+		return False
+
+	def _find_poison_pills_binary_search(self, endpoint, offset, limit):
+		"""
+		Binary search to find safe record batches around poison pill(s).
+		Recursively splits batch in half until all poisons are isolated.
+		Returns list of (offset, limit) tuples representing safe batches.
+		"""
+		sep = "&" if "?" in endpoint else "?"
+		test_endpoint = f"{endpoint}{sep}limit={limit}&offset={offset}&lang=EN"
+		
+		try:
+			self.logger.info(f"Binary search: testing offset {offset}, limit {limit}")
+		except:
+			print(f"Binary search: testing offset {offset}, limit {limit}")
+		
+		test_data = self.fetch_with_retry(test_endpoint)
+		
+		if not test_data:
+			try:
+				self.logger.warning(f"Binary search: No data at offset {offset}, limit {limit}")
+			except:
+				print(f"Binary search: No data at offset {offset}, limit {limit}")
+			return []
+		
+		# If this batch is clean, return it
+		if not self._contains_processing_error(test_data):
+			try:
+				self.logger.info(f"Binary search: Found clean batch at offset {offset}, limit {limit}")
+			except:
+				print(f"Binary search: Found clean batch at offset {offset}, limit {limit}")
+			return [(offset, limit)]
+		
+		# If batch has error and is single record, it's poisoned - skip it
+		if limit == 1:
+			try:
+				self.logger.warning(f"Binary search: Poison pill found at offset {offset}")
+			except:
+				print(f"Binary search: Poison pill found at offset {offset}")
+			return []
+		
+		# Split in half and search recursively
+		try:
+			self.logger.info(f"Binary search: Poison found, splitting batch at offset {offset}, limit {limit}")
+		except:
+			print(f"Binary search: Poison found, splitting batch at offset {offset}, limit {limit}")
+		
+		half = limit // 2
+		left_half = self._find_poison_pills_binary_search(endpoint, offset, half)
+		right_half = self._find_poison_pills_binary_search(endpoint, offset + half, limit - half)
+		
+		return left_half + right_half
 
 	def _find_records_in_response(self, data, resource_key):
 		"""Auto-detect records in Lufthansa response structure."""
