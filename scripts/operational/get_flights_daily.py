@@ -37,9 +37,9 @@ def run_flight_ingestion():
 	for origin, destination in routes:
 		logger.info(f"Processing: {origin} -> {destination}")
 		endpoint = f"/v1/operations/flightstatus/route/{origin}/{destination}/{today}?serviceType={service_type}&limit=100"
-		data = client.fetch_with_retry(endpoint)
-		if not data:
-			logger.warning(f"Skipping {origin}->{destination} due to fetch error.")
+		data, status_code = client.fetch_with_retry(endpoint)
+		if not data or status_code != 200:
+			logger.warning(f"Skipping {origin}->{destination} due to fetch error (status: {status_code}).")
 			continue
 		res_key = 'FlightStatusResource'
 		records = data.get(res_key, {}).get('Flights', {}).get('Flight', [])

@@ -17,9 +17,9 @@ def run_single_route_lookup(departure_airport: str, arrival_airport: str, date: 
 	route_for_output = f"{departure_airport}-{arrival_airport}"
 	endpoint = f"/v1/operations/flightstatus/route/{departure_airport}/{arrival_airport}/{date}"
 	logger.info(f"Fetching flight status for {departure_airport} to {arrival_airport} on {date}")
-	data = client.fetch_with_retry(endpoint)
-	if not data:
-		logger.warning("Request failed. See previous logs for details.")
+	data, status_code = client.fetch_with_retry(endpoint)
+	if not data or status_code != 200:
+		logger.warning(f"Request failed (status: {status_code}). See previous logs for details.")
 		return
 	file_name = f"get_flight_on_route_{route_for_output}_{date}_output.json"
 	client.save_json(data, category="ops", entity_type="flights", filename=file_name)
