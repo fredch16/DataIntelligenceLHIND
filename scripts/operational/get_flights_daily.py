@@ -21,7 +21,7 @@ logger = logging.getLogger("get_flights_daily")
 
 def run_flight_ingestion():
 	start_time = time.time()
-	client = LufthansaClient(scope_name="lufthansa_scope")
+	client = LufthansaClient(scope_name="lufthansa_app_own")
 	today = datetime.now().strftime('%Y-%m-%d')
 	today_str = datetime.now().strftime('%Y%m%d')
 	service_type = "passenger"
