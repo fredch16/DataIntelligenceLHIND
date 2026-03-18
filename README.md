@@ -53,10 +53,11 @@ The system is designed to run seamlessly in two environments:
 **Local Environment:** Ensure a `config.yaml` exists in the root directory:
 
 ```yaml
-password: "your_proxy_credential"
+
+access_token: "your_access_token"
 ```
 
-**Databricks Environment:** Ensure a Secret Scope named `lufthansa_scope` is configured with the key `client_secret`.
+**Databricks Environment:** Ensure a Secret Scope named `lufthansa_app_own` is configured with the key `access_token`.
 
 ### 🚀 Running the Pipeline
 
@@ -64,26 +65,26 @@ To execute ingestion tasks, run the corresponding scripts:
 
 **Daily Flight Ingestion:**
 ```bash
-python scripts/operations/get_flights_daily.py
+uv run scripts/operations/get_flights_daily.py
 ```
 
 **Reference Data Ingestion (Consolidated):**
 ```bash
-python scripts/references/ingest_all_references.py
+uv run scripts/references/ingest_all_references.py
 ```
 Toggle specific endpoints by editing `REFERENCES_CONFIG` in `ingest_all_references.py` and setting `enabled: True/False`.
 
 **Individual Reference Scripts:**
 Each reference data type can still be ingested independently:
 ```bash
-python scripts/references/get_airlines.py
-python scripts/references/get_airports.py
+uv run scripts/references/get_airlines.py
+uv run scripts/references/get_airports.py
 # ... etc
 ```
 
 **Ad-hoc Flight Lookup:**
 ```bash
-python scripts/singular/get_flight_by_route_on_day.py
+uv run scripts/singular/get_flight_by_route_on_day.py
 ```
 Edit `departure_airport`, `arrival_airport`, and `date` parameters in the script as needed.
 
