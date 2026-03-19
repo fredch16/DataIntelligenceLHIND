@@ -29,15 +29,25 @@ resources:
         timezone_id: UTC
         pause_status: UNPAUSED
       tasks:
-        - task_key: Ingest_Daily_Flights_by_Route
+        # Task 1: Fetch the API
+        - task_key: fetch_api_data
           spark_python_task:
             python_file: ../src/ingestion/fetch_flights_on_route.py
           environment_key: Default
-        - task_key: refresh_pipeline
+
+        # Task 2: Run Bronze Pipeline
+        - task_key: refresh_bronze
           depends_on:
-           - task_key: Ingest_Daily_Flights_by_Route
+            - task_key: fetch_api_data
           pipeline_task:
-            pipeline_id: ${resources.pipelines.lufthansa_medallion.id}
+            pipeline_id: ${resources.pipelines.lufthansa_bronze_pipeline.id}
+
+        # Task 3: Run Silver Pipeline
+        - task_key: refresh_silver
+          depends_on:
+            - task_key: refresh_bronze
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.lufthansa_silver_pipeline.id}
       queue:
         enabled: true
       environments:

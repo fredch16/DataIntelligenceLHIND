@@ -1,18 +1,27 @@
 resources:
   pipelines:
-    lufthansa_medallion:
-      name: "[${bundle.target}] Lufthansa Medallion"
-
+    # --- 1. THE BRONZE PIPELINE ---
+    lufthansa_bronze_pipeline:
+      name: "[${bundle.target}] Lufthansa Bronze"
       catalog: main
-      target: lufthansa_bronze
-
+      target: lufthansa_bronze 
       libraries:
-       - file:
-          path: ../src/bronze/flights_loader.py
-       - file:
-          path: ../src/bronze/reference_loader.py
-
+        - file:
+            path: ../src/bronze/ops_ingestion.py
+        - file:
+            path: ../src/bronze/ref_ingestion.py
       serverless: true
+      continuous: false
+      channel: PREVIEW
 
+    # --- 2. THE SILVER PIPELINE ---
+    lufthansa_silver_pipeline:
+      name: "[${bundle.target}] Lufthansa Silver"
+      catalog: main
+      target: lufthansa_silver 
+      libraries:
+        - file:
+            path: ../src/silver/silver_transform.py
+      serverless: true
       continuous: false
       channel: PREVIEW

@@ -3,25 +3,18 @@ from pyspark.sql.functions import *
 from pyspark.sql.window import Window
 
 @dp.materialized_view(
-    name="flights_silver",
-    comment="Cleaned, typed, and deduplicated Lufthansa flights (Operational & Timestamps)"
+    name="ops_flights_silver", 
+    comment="Cleaned, typed, and deduplicated Lufthansa flights"
 )
 def silver_flights():
-    # 1. Read the live Bronze table
-    raw_df = dp.read("ops_flights")
+    # 1. Read from the Unity Catalog Bronze table
+    raw_df = spark.table("main.lufthansa_bronze.ops_flights") 
     
-    # 2. THE ARRAY BUG FIX
-    # Lufthansa sometimes sends 1 flight (Object) and sometimes 10 (Array).
-    # Spark's `typeof` function checks the structure dynamically. If it's an array, 
-    # we leave it. If it's an object, we wrap it in an array() so we can safely explode it.
-    safe_flight_col = expr(
-        "CASE WHEN typeof(FlightStatusResource.Flights.Flight) LIKE 'array%' "
-        "THEN FlightStatusResource.Flights.Flight "
-        "ELSE array(FlightStatusResource.Flights.Flight) END"
+    # 2. EXPLODE (Auto Loader already made it an Array for us!)
+    exploded_df = raw_df.withColumn(
+        "flight_node", 
+        explode_outer(col("payload.FlightStatusResource.Flights.Flight"))
     )
-    
-    # 'explode_outer' turns the array into individual rows without dropping empty ones
-    exploded_df = raw_df.withColumn("flight_node", explode_outer(safe_flight_col))
     
     # 3. FLATTEN AND TYPE CASTING
     flat_df = exploded_df.select(
@@ -40,33 +33,29 @@ def silver_flights():
         col("flight_node.FlightStatus.Code").alias("status_code"),
         col("flight_node.Departure.TimeStatus.Code").alias("time_status"),
         
-        # UTC Timestamps (For Math)
-        to_timestamp(col("flight_node.Departure.ScheduledTimeUTC.DateTime")).alias("sch_dep_utc"),
-        to_timestamp(col("flight_node.Arrival.ScheduledTimeUTC.DateTime")).alias("sch_arr_utc"),
-        to_timestamp(col("flight_node.Departure.ActualTimeUTC.DateTime")).alias("act_dep_utc"),
+		# UTC Timestamps (Explicitly handling the 'T' and 'Z' without seconds)
+        to_timestamp(col("flight_node.Departure.ScheduledTimeUTC.DateTime"), "yyyy-MM-dd'T'HH:mm'Z'").alias("sch_dep_utc"),
+        to_timestamp(col("flight_node.Arrival.ScheduledTimeUTC.DateTime"), "yyyy-MM-dd'T'HH:mm'Z'").alias("sch_arr_utc"),
+        to_timestamp(col("flight_node.Departure.ActualTimeUTC.DateTime"), "yyyy-MM-dd'T'HH:mm'Z'").alias("act_dep_utc"),
         
-        # Local Timestamps (For Dashboards)
-        to_timestamp(col("flight_node.Departure.ScheduledTimeLocal.DateTime")).alias("sch_dep_local"),
-        to_timestamp(col("flight_node.Arrival.ScheduledTimeLocal.DateTime")).alias("sch_arr_local"),
-        to_timestamp(col("flight_node.Departure.ActualTimeLocal.DateTime")).alias("act_dep_local"),
+        # Local Timestamps (Explicitly handling the 'T' without seconds)
+        to_timestamp(col("flight_node.Departure.ScheduledTimeLocal.DateTime"), "yyyy-MM-dd'T'HH:mm").alias("sch_dep_local"),
+        to_timestamp(col("flight_node.Arrival.ScheduledTimeLocal.DateTime"), "yyyy-MM-dd'T'HH:mm").alias("sch_arr_local"),
+        to_timestamp(col("flight_node.Departure.ActualTimeLocal.DateTime"), "yyyy-MM-dd'T'HH:mm").alias("act_dep_local"),
         
-        # Custom Metadata
-        col("ingested_at").cast("timestamp").alias("ingested_at"),
-        col("batch_id").alias("batch_id"),
-        col("_metadata.file_path").alias("source_file")
+        # Metadata
+        col("ingestion_metadata.ingested_at").cast("timestamp").alias("ingested_at"),
+        col("ingestion_metadata.batch_id").alias("batch_id"),
+        col("ingestion_metadata.script_name").alias("source_script")
     )
     
     # 4. PRIMARY KEY GENERATION
-    # We create a unique ID by combining Carrier + Flight Number + Scheduled Departure Date
-    # e.g., "LH-400-2026-03-18"
     pk_df = flat_df.filter(col("flight_number").isNotNull()).withColumn(
         "flight_id",
         concat_ws("-", col("op_airline_id"), col("flight_number"), to_date(col("sch_dep_utc")))
     )
     
-    # 5. DEDUPLICATION (The "Maturity" Logic)
-    # If we fetch the same flight twice, we partition by our new flight_id,
-    # order them by ingested_at (newest first), and only keep row #1.
+    # 5. DEDUPLICATION
     window_spec = Window.partitionBy("flight_id").orderBy(col("ingested_at").desc())
     
     final_silver_df = (
