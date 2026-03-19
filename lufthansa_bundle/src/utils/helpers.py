@@ -99,6 +99,37 @@ class LufthansaClient:
 		project_root = os.path.dirname(script_dir)
 		return os.path.join(project_root, "outputs")
 
+	def _normalize_single_objects_to_lists(self, data):
+			"""
+			Fixes the Lufthansa API bug where 1 record is returned as a Dict instead of a List.
+			Ensures Databricks Auto Loader infers a consistent ARRAY<STRUCT> schema.
+			"""
+			if not isinstance(data, dict):
+				return data
+				
+			# The known Lufthansa nested structures (Resource -> Plural -> Singular)
+			paths = [
+				("AirportResource", "Airports", "Airport"),
+				("AirlineResource", "Airlines", "Airline"),
+				("AircraftResource", "AircraftSummaries", "AircraftSummary"),
+				("CityResource", "Cities", "City"),
+				("CountryResource", "Countries", "Country"),
+				("FlightStatusResource", "Flights", "Flight") # Future-proofing operational data!
+			]
+			
+			for resource, plural, singular in paths:
+				try:
+					if resource in data and isinstance(data[resource], dict):
+						if plural in data[resource] and isinstance(data[resource][plural], dict):
+							items = data[resource][plural].get(singular)
+							# If the item is a dictionary (single record), wrap it in a list!
+							if isinstance(items, dict):
+								data[resource][plural][singular] = [items]
+				except Exception as e:
+					pass # Fail silently, return original data
+					
+			return data
+
 	def fetch_with_retry(self, endpoint, max_retries=5):
 		"""Fetch with retry logic. Returns (data, status_code) tuple."""
 		retry_count = 0
@@ -215,6 +246,7 @@ class LufthansaClient:
 				
 				# Save all clean batches found during binary search
 				for batch_offset, batch_limit, batch_data in clean_batches:
+					batch_data = self._normalize_single_objects_to_lists(batch_data)
 					try:
 						filename = f"{today_str}_{entity_type}_offset{batch_offset}.json"
 						meta_extras = {
@@ -265,7 +297,8 @@ class LufthansaClient:
 				except Exception as log_err:
 					print(f"Request failed at offset {offset} (status: {status_code}). Stopping.")
 				break
-			
+
+			data = self._normalize_single_objects_to_lists(data)
 			# Normal flow - no poison detected
 			try:
 				filename = f"{today_str}_{entity_type}_offset{offset}.json"
