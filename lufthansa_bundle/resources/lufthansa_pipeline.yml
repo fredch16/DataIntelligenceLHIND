@@ -9,6 +9,8 @@ resources:
       libraries:
        - file:
           path: ../src/bronze/flights_loader.py
+       - file:
+          path: ../src/bronze/reference_loader.py
 
       serverless: true
 
