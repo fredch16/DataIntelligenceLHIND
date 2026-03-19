@@ -1,12 +1,16 @@
 resources:
   pipelines:
-    name: "[${bundle.target}] Lufthansa Medallion"
+    lufthansa_medallion:
+      name: "[${bundle.target}] Lufthansa Medallion"
 
-    catalog: main
-    target: lufthansa_bronze
+      catalog: main
+      target: lufthansa_bronze
 
-    libraries:
-      - file: ../src/bronze/flights_loader.py
-    
-    continuous: false
-    channel: PREVIEW
+      libraries:
+       - file:
+          path: ../src/bronze/flights_loader.py
+
+      serverless: true
+
+      continuous: false
+      channel: PREVIEW

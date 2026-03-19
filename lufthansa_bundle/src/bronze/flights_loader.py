@@ -10,6 +10,8 @@ def ingest_flights():
 		spark.readStream.format("cloudFiles")
 			.option("cloudFiles.format", "json")
 			.option("multiLine", "true")
+			.option("cloudFiles.inferColumnTypes", "true")
+			.option("cloudFiles.schemaEvolutionMode", "addNewColumns")
 			.load("/Volumes/main/lufthansa/landing_zone/ops/flights")
 	)
 
