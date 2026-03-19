@@ -33,6 +33,11 @@ resources:
           spark_python_task:
             python_file: ../src/ingestion/fetch_flights_on_route.py
           environment_key: Default
+        - task_key: refresh_pipeline
+          depends_on:
+           - task_key: Ingest_Daily_Flights_by_Route
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.lufthansa_medallion.id}
       queue:
         enabled: true
       environments:

@@ -63,8 +63,8 @@ class LufthansaClient:
 			from pyspark.dbutils import DBUtils
 			spark = SparkSession.builder.getOrCreate()
 			dbutils = DBUtils(spark)
-			cid = dbutils.secrets.get(scope=self.scope, key="client_id")
-			csec = dbutils.secrets.get(scope=self.scope, key="client_secret")
+			cid = dbutils.secrets.get(scope=scope, key="client_id")
+			csec = dbutils.secrets.get(scope=scope, key="client_secret")
 			return cid, csec
 		else:
 			project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
