@@ -8,7 +8,7 @@ from pyspark.sql.window import Window
 )
 def silver_flights():
     # 1. Read the live Bronze table
-    raw_df = dp.read("ops_flights_bronze")
+    raw_df = dp.read("ops_flights")
     
     # 2. THE ARRAY BUG FIX
     # Lufthansa sometimes sends 1 flight (Object) and sometimes 10 (Array).
