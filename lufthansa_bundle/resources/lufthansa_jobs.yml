@@ -9,7 +9,7 @@ resources:
       tasks:
         - task_key: fetch_reference_data_api
           spark_python_task:
-            python_file: /Workspace/Users/bigbenri12@gmail.com/DataIntelligenceLHIND/scripts/references/ingest_all_references.py
+            python_file: ../src/ingestion/fetch_all_references.py
           environment_key: Default
       queue:
         enabled: true
@@ -31,7 +31,7 @@ resources:
       tasks:
         - task_key: Ingest_Daily_Flights_by_Route
           spark_python_task:
-            python_file: /Workspace/Users/bigbenri12@gmail.com/DataIntelligenceLHIND/scripts/operational/get_flights_daily.py
+            python_file: ../src/ingestion/fetch_flights_on_route.py
           environment_key: Default
       queue:
         enabled: true

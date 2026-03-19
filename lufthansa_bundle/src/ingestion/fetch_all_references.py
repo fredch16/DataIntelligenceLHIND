@@ -5,7 +5,7 @@ import sys
 import os
 
 # Get the absolute path of the directory containing THIS script (src/ingestion)
-current_dir = os.path.dirname(os.path.abspath(__file__))
+current_dir = os.getcwd()
 
 # Go up one level to reach 'src'
 # This ensures that 'import utils.helpers' will work correctly
@@ -51,7 +51,7 @@ REFERENCES_CONFIG = {
 
 def ingest_all_references():
 	start_time = time.time()
-	client = LufthansaClient(scope_name="lufthansa_app_own")
+	client = LufthansaClient(scope_name="lufthansa")
 	enabled_refs = {k: v for k, v in REFERENCES_CONFIG.items() if v["enabled"]}
 	
 	logger.info(f"Starting Reference Data Ingestion")

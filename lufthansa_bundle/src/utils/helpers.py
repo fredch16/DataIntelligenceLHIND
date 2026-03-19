@@ -10,13 +10,13 @@ from datetime import datetime
 class LufthansaClient:
 	def __init__(self, scope_name="lufthansa_app_own"):
 		self.base_url = "https://api.lufthansa.com"
-		self.client_secret = self._get_credentials(scope_name)
-		print(self.client_secret)
+		self.client_id, self.client_secret = self._get_credentials(scope_name)
+		self.token = self._authenticate()
 		self.base_volume = self._get_base_volume()
 		self._setup_logger()
 		self.logger = logging.getLogger(self.__class__.__name__)
 		self.headers = {
-			"Authorization": f"Bearer {self.client_secret}",
+			"Authorization": f"Bearer {self.token}",
 			"Accept": "application/json"
 		}
 
@@ -63,8 +63,9 @@ class LufthansaClient:
 			from pyspark.dbutils import DBUtils
 			spark = SparkSession.builder.getOrCreate()
 			dbutils = DBUtils(spark)
-			proxy_pass = dbutils.secrets.get(scope=scope, key="access_token")
-			return proxy_pass
+			cid = dbutils.secrets.get(scope=self.scope, key="client_id")
+			csec = dbutils.secrets.get(scope=self.scope, key="client_secret")
+			return cid, csec
 		else:
 			project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 			config_path = os.path.join(project_root, "config.yaml")
@@ -73,7 +74,23 @@ class LufthansaClient:
 			with open(config_path, 'r') as f:
 				import yaml
 				config = yaml.safe_load(f)
-			return config["access_token"]
+			return config["client_id"], config["client_secret"]
+
+	def _authenticate(self):
+		auth_url = f"{self.base_url}/v1/oauth/token"
+
+		payload = {
+			"client_id": self.client_id,
+			"client_secret": self.client_secret,
+			"grant_type" : "client_credentials"
+		}
+
+		response = requests.post(auth_url, data=payload)
+
+		if response.status_code != 200:
+			raise Exception(f"Auth Failed: {response.status_code} - {response.text}")
+
+		return response.json()["access_token"]
 
 	def _get_base_volume(self):
 		if "DATABRICKS_RUNTIME_VERSION" in os.environ:

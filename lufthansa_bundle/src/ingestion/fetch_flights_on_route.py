@@ -5,7 +5,10 @@ import sys
 import os
 
 # Get the absolute path of the directory containing THIS script (src/ingestion)
-current_dir = os.path.dirname(os.path.abspath(__file__))
+if "__file__" in globals():
+	current_dir = os.path.dirname(os.path.abspath(__file__))
+else:
+	current_dir = os.getcwd()
 
 # Go up one level to reach 'src'
 # This ensures that 'import utils.helpers' will work correctly
@@ -21,7 +24,7 @@ logger = logging.getLogger("get_flights_daily")
 
 def run_flight_ingestion():
 	start_time = time.time()
-	client = LufthansaClient(scope_name="lufthansa_app_own")
+	client = LufthansaClient(scope_name="lufthansa")
 	today = datetime.now().strftime('%Y-%m-%d')
 	today_str = datetime.now().strftime('%Y%m%d')
 	service_type = "passenger"
