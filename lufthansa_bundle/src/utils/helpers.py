@@ -208,7 +208,7 @@ class LufthansaClient:
 		except Exception as log_err:
 			print(f"Saved to {target_file}")
 
-	def ingest_paginated(self, endpoint, resource_key, category, entity_type):
+	def ingest_paginated(self, endpoint, resource_key, category, entity_type, limit):
 		"""
 		High-volume ingestion: saves each API response as separate file.
 		Preserves raw metadata and link blocks for downstream processing.
@@ -217,7 +217,6 @@ class LufthansaClient:
 		Filename format: YYYYMMDD_{entity_type}_offsetN.json
 		"""
 		offset = 0
-		limit = 100
 		today_str = datetime.now().strftime("%Y%m%d")
 		total_records = 0
 		
@@ -301,11 +300,26 @@ class LufthansaClient:
 			data = self._normalize_single_objects_to_lists(data)
 			# Normal flow - no poison detected
 			try:
-				filename = f"{today_str}_{entity_type}_offset{offset}.json"
+				# --- Filename Logic Selector ---
+				if entity_type == "flights":
+					# ✈️ OPERATIONAL MODE: Detailed Hub + Timestamp
+					parts = endpoint.split('/')
+					hub_code = parts[-2] if "departures" in endpoint else "unknown"
+					
+					# Result: flights_FRA_20260320_174500_offset0.json
+					now_ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+					filename = f"flights_{hub_code}_{now_ts}_offset{offset}.json"
+				else:
+					# 🏛️ REFERENCE MODE: Simple Date-based (The "Old" Method)
+					# Result: airports_20260320_offset0.json
+					today_str = datetime.now().strftime("%Y%m%d")
+					filename = f"{entity_type}_{today_str}_offset{offset}.json"
+
+				# --- Metadata and Save ---
 				meta_extras = {
 					"offset": offset,
 					"limit": limit,
-					"endpoint": endpoint
+					"endpoint": endpoint,
 				}
 				self.save_json(data, category, entity_type, filename, metadata=meta_extras)
 				

@@ -19,20 +19,40 @@ resources:
             environment_version: "4"
       performance_target: PERFORMANCE_OPTIMIZED
 
+    Utility_Ingest_Operational:
+      name: Utility Operational Ingestion
+      email_notifications:
+        on_failure:
+          - frederickcharbonnier@icloud.com
+      tasks:
+        # Task 1: Fetch the API
+        - task_key: fetch_api_data
+          spark_python_task:
+            python_file: ../src/ingestion/fetch_departures_from_airport.py
+          environment_key: Default
+      queue:
+        enabled: true
+      environments:
+        - environment_key: Default
+          spec:
+            environment_version: "4"
+      performance_target: PERFORMANCE_OPTIMIZED
+
     Ingest_Operational_Data_Daily:
       name: Ingest Operational Data (Daily)
       email_notifications:
         on_failure:
           - frederickcharbonnier@icloud.com
       schedule:
-        quartz_cron_expression: 58 55 1 * * ?
+        quartz_cron_expression: 0 0 0/4 * * ?
         timezone_id: UTC
         pause_status: UNPAUSED
+
       tasks:
         # Task 1: Fetch the API
         - task_key: fetch_api_data
           spark_python_task:
-            python_file: ../src/ingestion/fetch_flights_on_route.py
+            python_file: ../src/ingestion/fetch_departures_from_airport.py
           environment_key: Default
 
         # Task 2: Run Bronze Pipeline

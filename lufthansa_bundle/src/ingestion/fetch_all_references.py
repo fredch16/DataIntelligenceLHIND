@@ -67,7 +67,8 @@ def ingest_all_references():
 			endpoint=config["endpoint"],
 			resource_key=config["resource_key"],
 			category="ref",
-			entity_type=entity_type
+			entity_type=entity_type,
+			limit=100
 		)
 	
 	duration = (time.time() - start_time) / 60
