@@ -48,6 +48,12 @@ resources:
             - task_key: refresh_bronze
           pipeline_task:
             pipeline_id: ${resources.pipelines.lufthansa_silver_pipeline.id}
+        # Task 3: Run Gold Pipeline
+        - task_key: refresh_gold
+          depends_on:
+            - task_key: refresh_silver
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.lufthansa_gold_pipeline.id}
       queue:
         enabled: true
       environments:
