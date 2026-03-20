@@ -21,7 +21,20 @@ resources:
       target: lufthansa_silver 
       libraries:
         - file:
-            path: ../src/silver/silver_transform.py
+            path: ../src/silver/silver_operations.py
+        - file:
+            path: ../src/silver/silver_references.py
+      serverless: true
+      continuous: false
+      channel: PREVIEW
+    
+    lufthansa_gold_pipeline:
+      name: "[${bundle.target}] Lufthansa Gold"
+      catalog: main
+      target: lufthansa_gold
+      libraries:
+       - file:
+           path: ../src/gold/gold_flight_analytics.py
       serverless: true
       continuous: false
       channel: PREVIEW

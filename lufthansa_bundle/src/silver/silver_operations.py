@@ -6,6 +6,9 @@ from pyspark.sql.window import Window
     name="ops_flights_silver", 
     comment="Cleaned, typed, and deduplicated Lufthansa flights"
 )
+@dp.expect_or_drop("valid_flight_number", "flight_number IS NOT NULL")
+@dp.expect_or_drop("valid_departure_airport", "origin_iata IS NOT NULL")
+@dp.expect_or_drop("valid_arrival_airport", "dest_iata IS NOT NULL")
 def silver_flights():
     # 1. Read from the Unity Catalog Bronze table
     raw_df = spark.table("main.lufthansa_bronze.ops_flights") 
@@ -65,3 +68,29 @@ def silver_flights():
     )
     
     return final_silver_df
+
+@dp.materialized_view(
+    name="ops_flights_quarantine",
+    comment="Records that failed flight quality checks (Missing numbers, routes, or old dates)"
+)
+def flights_quarantine():
+    df = spark.table("main.lufthansa_bronze.ops_flights")
+    
+    # Flatten just enough to check the rules
+    exploded = df.withColumn("flight_node", explode_outer(col("payload.FlightStatusResource.Flights.Flight")))
+    
+    flat = exploded.select(
+        col("flight_node.OperatingCarrier.FlightNumber").alias("flight_number"),
+        col("flight_node.Departure.AirportCode").alias("origin_iata"),
+        col("flight_node.Arrival.AirportCode").alias("dest_iata"),
+        to_timestamp(col("flight_node.Departure.ScheduledTimeUTC.DateTime"), "yyyy-MM-dd'T'HH:mm'Z'").alias("sch_dep_utc"),
+        col("ingestion_metadata.batch_id").alias("batch_id")
+    )
+
+    # CATCH THE REJECTS: The "OR" logic captures anything that failed ANY rule
+    return flat.filter(
+        (col("flight_number").isNull()) |
+        (col("origin_iata").isNull()) |
+        (col("dest_iata").isNull()) |
+        (col("sch_dep_utc") < '2024-01-01')
+    )
