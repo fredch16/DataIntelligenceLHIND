@@ -5,3 +5,18 @@ outputs
 __pycache__
 utils/__pycache__
 .vs_code
+config.yaml
+lufthansa_bundle/.vscode
+.venv
+# =========================
+# TERRAFORM SECURITY
+# =========================
+# Ignore local Terraform directories and state memory
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/crash.log
+
+# Ignore Secret Files (CRITICAL)
+terraform/terraform.tfvars
+terraform/.env
