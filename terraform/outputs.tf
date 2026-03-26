@@ -30,5 +30,5 @@ output "job_daily_operational_id" {
 
 output "workspace_bundle_path" {
   description = "Workspace path where source files are deployed"
-  value       = local.bundle_path
+  value       = local.project_root
 }

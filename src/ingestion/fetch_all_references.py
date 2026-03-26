@@ -3,24 +3,26 @@ import logging
 from datetime import datetime
 import sys
 import os
+import inspect
 
-# Get the absolute path of the directory containing THIS script (src/ingestion)
-
+# --- DATABRICKS-SAFE PATH BOILERPLATE ---
+# 1. Try normal __file__ first (works locally and in standard Python jobs)
 if "__file__" in globals():
-	current_dir = os.path.dirname(os.path.abspath(__file__))
+    current_file = os.path.abspath(__file__)
 else:
-	current_dir = os.getcwd()
+    # 2. Databricks Fallback: Extract the filename straight from the compiler frame
+    current_file = os.path.abspath(inspect.getfile(inspect.currentframe()))
 
-# Go up one level to reach 'src'
-# This ensures that 'import utils.helpers' will work correctly
+current_dir = os.path.dirname(current_file)
+
+# 3. Navigate up one directory from 'ingestion' to 'src'
 src_root = os.path.abspath(os.path.join(current_dir, '..'))
 
+# 4. Add 'src' to the system path so Python can find 'utils'
 if src_root not in sys.path:
     sys.path.append(src_root)
 
-# Now you can import your utils
 from utils.helpers import LufthansaClient
-
 logger = logging.getLogger("ingest_all_references")
 
 # Toggleable reference data configuration

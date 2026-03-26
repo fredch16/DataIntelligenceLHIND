@@ -67,7 +67,7 @@ class LufthansaClient:
 			csec = dbutils.secrets.get(scope=scope, key="client_secret")
 			return cid, csec
 		else:
-			project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+			project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 			config_path = os.path.join(project_root, "config.yaml")
 			if not os.path.exists(config_path):
 				raise FileNotFoundError(f"Could not find config at: {config_path}")

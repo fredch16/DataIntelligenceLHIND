@@ -3,14 +3,17 @@ import logging
 from datetime import datetime
 import sys
 import os
+import inspect
 
-# --- PATH BOILERPLATE ---
+# --- DATABRICKS-SAFE PATH BOILERPLATE ---
+# __file__ is unavailable when Databricks runs scripts via exec(compile(...))
 if "__file__" in globals():
-	current_dir = os.path.dirname(os.path.abspath(__file__))
+	current_file = os.path.abspath(__file__)
 else:
-	current_dir = os.getcwd()
+	# co_filename is set to the actual workspace path by the Databricks executor
+	current_file = os.path.abspath(inspect.getfile(inspect.currentframe()))
 
-src_root = os.path.abspath(os.path.join(current_dir, '..'))
+src_root = os.path.abspath(os.path.join(os.path.dirname(current_file), '..'))
 if src_root not in sys.path:
 	sys.path.append(src_root)
 
