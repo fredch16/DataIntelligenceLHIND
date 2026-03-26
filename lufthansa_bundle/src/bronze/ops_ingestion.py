@@ -14,15 +14,3 @@ def ingest_flights():
 			.option("cloudFiles.schemaEvolutionMode", "addNewColumns")
 			.load("/Volumes/main/lufthansa/landing_zone/ops/flights")
 	)
-
-# # 2. THE MATERIALIZED VIEW (Silver Transformation)
-# @dp.materialized_view(
-# 	name="flights_silver"
-# )
-# def clean_flights():
-# 	# Lakeflow manages the batch refresh automatically!
-# 	return spark.read.table("LIVE.ops_flights_bronze").select(
-# 		col("flight_id"),
-# 		col("departure_time").cast("timestamp"),
-# 		col("status")
-# 	)

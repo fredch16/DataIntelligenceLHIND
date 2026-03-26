@@ -30,20 +30,13 @@ def ingest_hub_flights():
 	"""
 	start_time = time.time()
 	client = LufthansaClient(scope_name="lufthansa")
-	
-	# Format current time for the API: yyyy-MM-ddTHH:mm
 	now_str = datetime.now().strftime("%Y-%m-%dT%H:%M")
-	
 	logger.info(f"🚀 Starting Hub Flight Ingestion at {now_str}")
 	logger.info(f"Targeting Hubs: {', '.join(HUBS)}")
-	
 	for hub in HUBS:
 		logger.info(f"--- Processing Hub: {hub} ---")
-		
-		# Build the dynamic endpoint
 		# Example: /v1/operations/flightstatus/departures/FRA/2026-03-20T16:45
 		hub_endpoint = f"/v1/operations/flightstatus/departures/{hub}/{now_str}"
-		
 		try:
 			client.ingest_paginated(
 				endpoint=hub_endpoint,
@@ -55,7 +48,6 @@ def ingest_hub_flights():
 		except Exception as e:
 			logger.error(f"❌ Failed to ingest hub {hub}: {str(e)}")
 			continue # Move to the next hub even if one fails
-	
 	duration = (time.time() - start_time) / 60
 	logger.info(f"✅ Hub ingestion complete! Total time: {duration:.2f} minutes")
 
