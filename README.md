@@ -1,149 +1,242 @@
-# Lufthansa Data Ingestion Engine
+# Lufthansa Data Intelligence Pipeline
 
-This repository contains a modular, professional-grade data ingestion pipeline designed to extract operational and reference data from the Lufthansa OpenAPI. The system is engineered to handle large-scale JSON data extraction and store it in raw format within Unity Catalog Volumes on the Databricks Lakehouse.
-
----
-
-## 🏗️ Architecture Overview
-
-The codebase follows a **Modular Design Pattern**. By separating the core logic (authentication, retrying, pagination) from the execution scripts, the system ensures maintainability and scalability.
-
-### Core Components
-
-- **`utils/helpers.py`**: Contains the `LufthansaClient` class. This is the engine of the project, managing:
-  - **Environment‑Aware Configuration**: Automatically switches between local `config.yaml` and Databricks Secret Scopes.
-  - **Universal Ingestion**: Support for both single‑endpoint calls and paginated reference data.
-  - **Robustness**: Exponential backoff retry logic for 429 (Rate Limit) and 5xx (Server) errors.
-
-- **`scripts/operations/`**: Focused on time‑sensitive, daily operational flight data.
-- **`scripts/references/`**: Focused on stable, monthly reference data (Airports, Aircraft, etc.).
+A production-grade data pipeline that extracts operational and reference data from the Lufthansa OpenAPI and processes it through a full Bronze → Silver → Gold medallion architecture on Databricks, managed with Terraform.
 
 ---
 
-## 📂 Project Structure
+## Architecture Overview
+
+The system is split into two distinct concerns: **ingestion** (Python scripts that call the API and land raw JSON) and **transformation** (Spark Declarative Pipelines that process data through the medallion layers).
+
+```
+Lufthansa API
+      │
+      ▼
+┌─────────────────┐
+│   Ingestion     │  src/ingestion/  — Python scripts, LufthansaClient
+│  (Landing Zone) │  Unity Catalog Volume: /Volumes/main/lufthansa/landing_zone/
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│     Bronze      │  src/bronze/     — Auto Loader (cloudFiles) → DLT tables
+│  (Raw JSON)     │  Catalog: main.lufthansa_bronze
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│     Silver      │  src/silver/     — Flatten, type-cast, deduplicate, quarantine
+│  (Typed/Clean)  │  Catalog: main.lufthansa_silver
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│      Gold       │  src/gold/       — Enriched fact table (joined dimensions)
+│  (Analytics)    │  Catalog: main.lufthansa_gold
+└─────────────────┘
+```
+
+Infrastructure is fully managed by **Terraform** (`terraform/`), which provisions Databricks Jobs and Spark Declarative Pipelines.
+
+---
+
+## Project Structure
 
 ```
 DataIntelligenceLHIND/
-├── config.yaml             # Local development credentials (git-ignored)
-├── utils/
-│   ├── __init__.py         # Package identifier
-│   └── helpers.py          # Centralized LufthansaClient logic
-├── scripts/
-│   ├── operations/
-│   │   └── get_flights_daily.py
-│   ├── references/
-│   │   ├── ingest_all_references.py     # Consolidated reference ingestion (toggleable)
-│   │   ├── get_aircraft.py
-│   │   ├── get_airlines.py
-│   │   ├── get_airports.py
-│   │   ├── get_cities.py
-│   │   └── get_countries.py
-│   └── singular/
-│       └── get_flight_by_route_on_day.py
-└── README.md
+├── config.yaml                          # Local dev credentials (git-ignored)
+├── pyproject.toml                       # Python project config (uv)
+├── src/
+│   ├── ingestion/
+│   │   ├── fetch_departures_from_airport.py  # Hub departure sweeper (primary ops script)
+│   │   ├── fetch_all_references.py           # Toggleable reference data ingestion
+│   │   └── fetch_flights_on_route.py         # Ad-hoc route-based flight lookup
+│   ├── bronze/
+│   │   ├── ops_ingestion.py             # Auto Loader → ops_flights DLT table
+│   │   └── ref_ingestion.py             # Auto Loader → ref_* DLT tables (5 types)
+│   ├── silver/
+│   │   ├── silver_operations.py         # Flatten + deduplicate flights; quarantine
+│   │   └── silver_references.py         # Flatten + deduplicate reference data; quarantine
+│   ├── gold/
+│   │   └── gold_flight_analytics.py     # Enriched fact table (flights + dimensions)
+│   └── utils/
+│       └── helpers.py                   # LufthansaClient — auth, pagination, retry, save
+└── terraform/
+    ├── main.tf                          # Workspace file uploads
+    ├── jobs.tf                          # Databricks Job definitions
+    ├── pipelines.tf                     # Spark Declarative Pipeline definitions
+    ├── provider.tf
+    ├── variables.tf
+    └── outputs.tf
 ```
 
 ---
 
-## 🛠️ Setup & Execution
+## Setup
 
-### 🔐 Prerequisites & Secrets
-The system is designed to run seamlessly in two environments:
+### Prerequisites & Secrets
 
-**Local Environment:** Ensure a `config.yaml` exists in the root directory:
+**Local Development:** Create a `config.yaml` in the project root:
 
 ```yaml
-
-access_token: "your_access_token"
+client_id: "your_client_id"
+client_secret: "your_client_secret"
 ```
 
-**Databricks Environment:** Ensure a Secret Scope named `lufthansa_app_own` is configured with the key `access_token`.
+**Databricks:** Configure a Secret Scope named `lufthansa` with keys `client_id` and `client_secret`.
 
-### 🚀 Running the Pipeline
+### Running Ingestion Scripts Locally
 
-To execute ingestion tasks, run the corresponding scripts:
-
-**Daily Flight Ingestion:**
+**Hub departure sweep** (primary operational ingestion):
 ```bash
-uv run scripts/operations/get_flights_daily.py
+uv run src/ingestion/fetch_departures_from_airport.py
 ```
+Sweeps the five Lufthansa hubs (FRA, MUC, ZRH, VIE, BRU) for all departing flights from the current time.
 
-**Reference Data Ingestion (Consolidated):**
+**Reference data ingestion:**
 ```bash
-uv run scripts/references/ingest_all_references.py
+uv run src/ingestion/fetch_all_references.py
 ```
-Toggle specific endpoints by editing `REFERENCES_CONFIG` in `ingest_all_references.py` and setting `enabled: True/False`.
+Toggle individual endpoints by setting `enabled: True/False` in the `REFERENCES_CONFIG` dict within the script.
 
-**Individual Reference Scripts:**
-Each reference data type can still be ingested independently:
+**Ad-hoc route lookup:**
 ```bash
-uv run scripts/references/get_airlines.py
-uv run scripts/references/get_airports.py
-# ... etc
+uv run src/ingestion/fetch_flights_on_route.py
 ```
-
-**Ad-hoc Flight Lookup:**
-```bash
-uv run scripts/singular/get_flight_by_route_on_day.py
-```
-Edit `departure_airport`, `arrival_airport`, and `date` parameters in the script as needed.
+Edit `routes` in the script to specify origin/destination pairs and date.
 
 ---
 
-## 📊 Data Governance & Storage
+## Data Storage
 
-All extracted data is persisted as raw JSON in the Bronze Layer, preserving complete API responses with metadata and link blocks.
+All raw API responses are stored as JSON in Unity Catalog Volumes with an ingestion envelope wrapping the original payload.
 
-**Base Volume Paths:**
-- **Databricks:** `/Volumes/main/lufthansa/landing_zone/`
-- **Local Development:** `outputs/`
+**Base Volume:** `/Volumes/main/lufthansa/landing_zone/`
 
-### Hybrid Partitioning Strategy
+### Partitioning Strategy
 
-Data is organized by category and type with intelligent partitioning:
-
-**Reference Data** (Monthly Partitioning):
+**Operational data** — daily partitions:
 ```
-{base_volume}/ref/{entity_type}/{YYYY-MM}/
-├── airlines/2026-03/
-│   ├── 20260316_airlines_offset0.json
-│   ├── 20260316_airlines_offset100.json
-│   └── ...
-├── airports/2026-03/
-├── aircraft/2026-03/
-├── cities/2026-03/
-└── countries/2026-03/
+landing_zone/ops/flights/{YYYY-MM-DD}/
+└── flights_{HUB}_{YYYYMMDD}_{HHmmss}_offset{N}.json
 ```
 
-**Operational Data** (Daily Partitioning):
+**Reference data** — monthly partitions:
 ```
-{base_volume}/ops/flights/{YYYY-MM-DD}/
-├── 2026-03-16/
-│   ├── 20260316_flights_LHR_STR.json
-│   ├── 20260316_flights_STR_LHR.json
-│   ├── 20260316_flights_FRA_JFK.json
-│   └── ...
+landing_zone/ref/{entity_type}/{YYYY-MM}/
+└── {entity_type}_{YYYYMMDD}_offset{N}.json
 ```
 
-**Filename Convention:** `YYYYMMDD_{entity_type}_[offset{N}|route].json`
+### Ingestion Envelope
+
+Every saved file is wrapped with metadata for traceability:
+```json
+{
+  "ingestion_metadata": {
+    "ingested_at": "...",
+    "batch_id": "...",
+    "category": "ops|ref",
+    "entity": "...",
+    "script_name": "helpers.py",
+    "offset": 0,
+    "limit": 50,
+    "endpoint": "..."
+  },
+  "payload": { ... }
+}
+```
 
 ---
 
-## ✈️ Operational Coverage
-The pipeline tracks high‑frequency routes including:
+## Medallion Pipeline
 
-- **LHR ↔ STR** (Regional connectivity)
-- **FRA ↔ JFK** (Transatlantic hub)
-- **FRA ↔ SIN** (South East Asia hub)
-- **FRA ↔ MUC** (Domestic backbone)
-- **FRA ↔ DXB / MUC ↔ DEL** (Major international corridors)
+Pipelines are defined using **Spark Declarative Pipelines (SDP)** and orchestrated via Databricks Jobs.
+
+### Bronze (`main.lufthansa_bronze`)
+
+Auto Loader streams new JSON files from the landing zone into Delta tables as they arrive.
+
+| Table | Source |
+|---|---|
+| `ops_flights` | `landing_zone/ops/flights/` |
+| `ref_airports_bronze` | `landing_zone/ref/airports/` |
+| `ref_airlines_bronze` | `landing_zone/ref/airlines/` |
+| `ref_aircraft_bronze` | `landing_zone/ref/aircraft/` |
+| `ref_cities_bronze` | `landing_zone/ref/cities/` |
+| `ref_countries_bronze` | `landing_zone/ref/countries/` |
+
+### Silver (`main.lufthansa_silver`)
+
+Explodes nested JSON, casts types, deduplicates on primary key (latest ingestion wins), and routes bad records to quarantine tables.
+
+**Operations pipeline (`silver_operations.py`):**
+- `flights_staged` — staging view that explodes `FlightStatusResource.Flights.Flight` and flattens all fields (carrier, route, status, UTC/local timestamps)
+- `ops_flights_silver` — deduplicated on `flight_id` (airline + number + departure date); drops records missing flight number or route
+- `ops_flights_quarantine` — records that failed quality checks
+
+**References pipeline (`silver_references.py`):**
+
+Each reference type follows the same pattern (staged view → silver table → quarantine):
+
+| Silver Table | Primary Key | Quality Rules |
+|---|---|---|
+| `ref_airports_silver` | `airport_code` | 3-char IATA code, non-null name |
+| `ref_airlines_silver` | `airline_id` | non-null ID and name |
+| `ref_aircraft_silver` | `aircraft_code` | non-null code and name |
+| `ref_cities_silver` | `city_code` | non-null code and name |
+| `ref_countries_silver` | `country_code` | non-null code and name |
+
+### Gold (`main.lufthansa_gold`)
+
+`gold_fact_flights_master` — enriched fact table joining flights with all reference dimensions:
+
+| Dimension | Join Key |
+|---|---|
+| Airlines | `op_airline_id → airline_id` |
+| Origin Airport | `origin_iata → airport_code` |
+| Destination Airport | `dest_iata → airport_code` |
+| Aircraft | `aircraft_code → aircraft_code` |
+| Countries | `dst.country_code → country_code` |
+
+Adds derived fields: `dep_hour`, `operational_status` (On Time / Delayed / In Flight / Cancelled).
 
 ---
 
-## ✅ Technical Achievements
+## Scheduled Jobs
 
-- **Rate Limit Management:** Implemented precise `time.sleep` intervals to respect the 3 requests per second limit.
-- **Pagination Logic:** Custom logic to handle Lufthansa’s unique “link‑based” pagination and “ghost record” termination.
-- **Data Standardization:** All JSON responses are re‑wrapped into a consistent schema to simplify downstream Spark transformations in the Silver layer.
-- **Automated Triggers:** Configured Databricks Jobs with Cron schedules for daily operational and monthly reference refreshes.
+Three Databricks Jobs are provisioned by Terraform:
 
+### Job 1 — Ingest Reference Data (Monthly)
+- **Schedule:** 01:55 UTC on the 3rd of every month
+- **Task:** `fetch_all_references.py`
+
+### Job 2 — Utility Operational Ingestion (Ad-hoc)
+- **Schedule:** None — triggered manually as needed
+- **Task:** `fetch_departures_from_airport.py`
+
+### Job 3 — Ingest Operational Data (Daily)
+- **Schedule:** Every 4 hours UTC, skipping midnight — 04:00, 08:00, 12:00, 16:00, 20:00
+- **Tasks (sequential):**
+  1. `fetch_api_data` — calls `fetch_departures_from_airport.py`
+  2. `refresh_bronze` — triggers the Bronze SDP pipeline
+  3. `refresh_silver` — triggers the Silver SDP pipeline
+  4. `refresh_gold` — triggers the Gold SDP pipeline
+
+---
+
+## Key Implementation Details
+
+### Pagination (`helpers.py`)
+`ingest_paginated` fetches pages at a fixed `limit` and advances the offset. The primary stopping condition is `TotalCount` from the API's `Meta` block — this correctly handles cases where the total record count is an exact multiple of the page size. Falls back to `record_count < limit` for endpoints that do not return `TotalCount`.
+
+### Poison Pill Handling
+When a paginated request returns HTTP 404 mid-sweep, a binary search recursively halves the batch to isolate the single bad offset, saves all clean sub-batches, then resumes ingestion past the problematic record.
+
+### Retry Logic
+`fetch_with_retry` applies exponential backoff on HTTP 429 and 5xx responses (up to 5 retries). HTTP 404 is treated as a signal (poison pill), not a transient error.
+
+### Single-Record Normalization
+The Lufthansa API returns a single record as a `dict` instead of a one-element `list`. `_normalize_single_objects_to_lists` corrects this before saving, ensuring Auto Loader always infers a consistent `ARRAY<STRUCT>` schema.
+
+### Environment Detection
+`LufthansaClient` automatically reads credentials from `config.yaml` locally and from Databricks Secret Scopes (`lufthansa`) when running in a Databricks Runtime environment.
