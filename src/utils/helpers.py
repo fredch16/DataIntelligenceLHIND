@@ -298,6 +298,15 @@ class LufthansaClient:
 				break
 
 			data = self._normalize_single_objects_to_lists(data)
+
+			# Extract TotalCount from API metadata (primary stopping condition)
+			total_count = None
+			try:
+				meta = data.get(resource_key, {}).get("Meta", {})
+				total_count = meta.get("TotalCount")
+			except Exception:
+				pass
+
 			# Normal flow - no poison detected
 			try:
 				# --- Filename Logic Selector ---
@@ -338,7 +347,14 @@ class LufthansaClient:
 				except Exception as log_err:
 					print(f"Saved {record_count} records (total: {total_records})")
 				
-				if record_count < limit:
+				if total_count is not None:
+					if total_records >= total_count:
+						try:
+							self.logger.info(f"Fetched all records ({total_records}/{total_count}). Stopping.")
+						except Exception as log_err:
+							print(f"Fetched all records ({total_records}/{total_count}). Stopping.")
+						break
+				elif record_count < limit:
 					try:
 						self.logger.info(f"Final batch has {record_count} records (< {limit}). Stopping.")
 					except Exception as log_err:

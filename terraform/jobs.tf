@@ -68,12 +68,12 @@ resource "databricks_job" "utility_ingest_operational" {
 # ---------------------------------------------------------------------------
 
 # Job 3: Daily operational pipeline — API → Bronze → Silver → Gold
-# Schedule: every 4 hours UTC (00:00, 04:00, 08:00, 12:00, 16:00, 20:00)
+# Schedule: every 4 hours UTC, skipping midnight (04:00, 08:00, 12:00, 16:00, 20:00)
 resource "databricks_job" "ingest_operational_data_daily" {
   name = "Ingest Operational Data (Daily)"
 
   schedule {
-    quartz_cron_expression = "0 0 0/4 * * ?"
+    quartz_cron_expression = "0 0 4,8,12,16,20 * * ?"
     timezone_id            = "UTC"
     pause_status           = "UNPAUSED"
   }
