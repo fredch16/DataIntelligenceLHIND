@@ -107,6 +107,41 @@ Edit `routes` in the script to specify origin/destination pairs and date.
 
 ---
 
+## Personal deployment
+
+1. Configure Terraform to use your Databricks workspace and personal access token.
+   ```bash
+   export TF_VAR_databricks_host="https://<your-workspace>.cloud.databricks.com"
+   export TF_VAR_databricks_token="<your-databricks-personal-access-token>"
+   export TF_VAR_catalog="main"    # optional, default is main
+   ```
+
+2. Initialize and apply Terraform from the `terraform/` directory.
+   ```bash
+   cd terraform
+   terraform init
+   terraform apply
+   ```
+
+3. Terraform will provision the Databricks jobs, workspace files, and Spark Declarative Pipelines for the Lufthansa pipeline.
+   - `Ingest reference data (Monthly)`
+   - `Utility Operational Ingestion`
+   - `Ingest Operational Data (Daily)`
+
+4. If you want to trigger the first run manually instead of waiting for schedule, use the Databricks CLI.
+   - List jobs and find the job ID:
+     ```bash
+     databricks jobs list
+     ```
+   - Trigger the `Utility Operational Ingestion` job once:
+     ```bash
+     databricks jobs run-now --job-id <JOB_ID>
+     ```
+
+   Alternatively, trigger the daily pipeline job by using its job ID instead.
+
+---
+
 ## Data Storage
 
 All raw API responses are stored as JSON in Unity Catalog Volumes with an ingestion envelope wrapping the original payload.

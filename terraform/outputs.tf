@@ -1,15 +1,15 @@
 output "bronze_pipeline_id" {
-  description = "ID of the Lufthansa Bronze DLT pipeline"
+  description = "ID of the Lufthansa Bronze SDP pipeline"
   value       = databricks_pipeline.lufthansa_bronze_pipeline.id
 }
 
 output "silver_pipeline_id" {
-  description = "ID of the Lufthansa Silver DLT pipeline"
+  description = "ID of the Lufthansa Silver SDP pipeline"
   value       = databricks_pipeline.lufthansa_silver_pipeline.id
 }
 
 output "gold_pipeline_id" {
-  description = "ID of the Lufthansa Gold DLT pipeline"
+  description = "ID of the Lufthansa Gold SDP pipeline"
   value       = databricks_pipeline.lufthansa_gold_pipeline.id
 }
 
